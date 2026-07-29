@@ -817,7 +817,9 @@ var P={
   trapped:false,trapT:0,trapCD:0,
   doorN:0,floor:1,hiding:false,
   stepT:0,bobT:0,bobAmt:0,
-  running:false
+  running:false,
+  moveRamp:0,      // разгон/торможение шага — 0 стоим, 1 полная скорость
+  roll:0,prevYaw:0 // лёгкий наклон камеры на поворотах
 };
 var EYE_H=0.9,CROUCH_H=0.48,JUMP_V=0.055;
 
@@ -1750,6 +1752,17 @@ function texScratchedMetal(){
   },1);
 }
 
+// Кожа руки — тем же способом, что и остальные процедурные текстуры:
+// лёгкая неровность тона, без единого внешнего файла.
+function texSkin(){
+  return makeTex(function(g,s){
+    g.fillStyle='#c98f6e';g.fillRect(0,0,s,s);
+    blotch(g,s,10,'rgba(170,110,80,0.20)',14,40);
+    blotch(g,s,6,'rgba(120,70,50,0.15)',10,30);
+    speckle(g,s,3000,90,55,40,0.10);
+  },1);
+}
+
 function makeFlashlight(){
   var g=new THREE.Group();
   var mt=texScratchedMetal();
@@ -1791,6 +1804,43 @@ function makeFlashlight(){
     blending:THREE.AdditiveBlending,depthWrite:false});
   var glow=new THREE.Mesh(new THREE.CircleGeometry(0.16,16),glowM);
   glow.position.set(0,0,-0.25); g.add(glow); FLV.glow=glow;
+
+  // ---------- рука, держащая фонарь ----------
+  // Кладём её в ту же группу, что и сам фонарь: покачивание при ходьбе,
+  // дрожь от бега и мигание при включении/выключении — всё уже считает
+  // updateFlashlight() для группы целиком, руке отдельная анимация не нужна.
+  var skinTex=texSkin();
+  var skin=new THREE.MeshStandardMaterial({color:0xd8a480,roughness:0.7,map:skinTex});
+  var sleeve=new THREE.MeshStandardMaterial({color:0x2a2e34,roughness:0.85});
+
+  var hand=new THREE.Group();
+  // кисть — обхватывает корпус фонаря чуть позади центра, ближе к камере,
+  // чтобы силуэт пальцев поверх металла читался, а не тонул в тени.
+  var palm=new THREE.Mesh(new THREE.SphereGeometry(0.058,10,8),skin);
+  palm.scale.set(1.0,0.8,1.05); palm.position.set(0.018,-0.040,0.115); hand.add(palm);
+  // три пальца поверх корпуса — четвёртый на таком расстоянии всё равно не читается
+  for(var fi=0;fi<3;fi++){
+    // r128 не знает CapsuleGeometry — обходимся цилиндром, разницы на глаз нет
+    var fin=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.085,7),skin);
+    fin.rotation.x=Math.PI/2;
+    fin.position.set(-0.020+fi*0.021,0.030,0.075-fi*0.010);
+    fin.rotation.z=0.05*(fi-1);
+    hand.add(fin);
+  }
+  // большой палец сбоку
+  var thumb=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.055,7),skin);
+  thumb.position.set(0.050,-0.015,0.125); thumb.rotation.z=Math.PI/2.4; thumb.rotation.y=0.3;
+  hand.add(thumb);
+  // предплечье — короткий намёк на руку, а не во весь кадр: уходит
+  // от кисти вниз-вправо и почти сразу тонет за краем обзора.
+  var forearm=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.048,0.22,10),skin);
+  forearm.position.set(0.075,-0.110,0.26); forearm.rotation.set(1.15,0.05,0.28);
+  hand.add(forearm);
+  // манжета рукава — форма охранника, а не голая рука из ниоткуда
+  var cuff=new THREE.Mesh(new THREE.CylinderGeometry(0.052,0.056,0.07,10),sleeve);
+  cuff.position.set(0.092,-0.175,0.36); cuff.rotation.set(1.15,0.05,0.28);
+  hand.add(cuff);
+  g.add(hand);
 
   g.position.set(0.30,FL_DOWN,-0.52);
   g.rotation.set(0.06,-0.13,0.05);
@@ -2205,7 +2255,12 @@ function update(ts){
   var sf=document.getElementById('stamfill');
   if(sf){sf.style.width=(STAM.v*100).toFixed(0)+'%';
     if(STAM.v<0.25)sf.classList.add('low'); else sf.classList.remove('low');}
-  var spd=(P.trapped?0.04:(run?0.09:0.055))*(cr?0.5:1)*dt*60;
+  // Разгон и торможение вместо мгновенной скорости: нажал — секунду
+  // с небольшим набирает ход, отпустил — не встаёт как вкопанный.
+  // Торможение чуть резче разгона — так теряет опору, а не скользит по льду.
+  var rampTarget=movingNow?1:0;
+  P.moveRamp+=(rampTarget-P.moveRamp)*(rampTarget>P.moveRamp?0.16:0.26);
+  var spd=(P.trapped?0.04:(run?0.09:0.055))*(cr?0.5:1)*dt*60*P.moveRamp;
 
   // Jump & crouch
   var targetEyeH = cr ? CROUCH_H : EYE_H;
@@ -2271,11 +2326,19 @@ function update(ts){
   // Trap check
   if(moved&&P.trapCD<=0&&getCell(P.x,P.z)===2)trapHit();
 
+  // Лёгкий наклон камеры на поворотах — как наклон корпуса, а не
+  // просто поворот головы. Только пока не идёт секретная концовка
+  // (там roll считает updateCut сам).
+  var yawDelta=P.yaw-P.prevYaw;P.prevYaw=P.yaw;
+  var targetRoll=Math.max(-0.10,Math.min(0.10,-yawDelta*2.4));
+  P.roll+=(targetRoll-P.roll)*0.15;
+
   // Camera
   camera.position.set(P.x+bobX,camY+bobY,P.z);
   camera.rotation.order='YXZ';
   camera.rotation.y=P.yaw;
   camera.rotation.x=P.pitch;
+  camera.rotation.z=P.roll;
 
   checkNear();
 }
