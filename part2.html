@@ -286,9 +286,20 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
 <script>
-// Нужен только Progress (метки прохождения), поэтому профиль
-// заводится тихо, без формы ника и пароля — она осталась на index.html.
-if(window.Profile)Profile.init(function(){});
+// Профиль заводится тихо, без формы ника и пароля — она осталась
+// на index.html. Как только известно, онлайн игрок или нет,
+// подтягиваем сохранение (слот 2) и обновляем кнопку "ПРОДОЛЖИТЬ".
+// Раньше это же самое ждало в вызове ниже до определения онлайн-статуса —
+// из-за этого восстановление с другого устройства могло не успеть
+// и кнопка показывала бы только то, что уже лежит на этом телефоне.
+if(window.Profile){
+  Profile.init(function(){
+    Profile.load(2,function(data){
+      if(data){SAVE.has=true;SAVE.id=data.id;SAVE.name=data.name;SAVE.inv=data.inv;}
+      if(typeof menuOpen==='function')menuOpen();
+    });
+  });
+}
 
 // ============================================================
 //  ЯДРО: сцена, текстуры, материалы
@@ -6979,6 +6990,11 @@ function saveAt(id){
     uv:!!UV.has, loaded:UV.loaded, spare:UV.spare
   };
   showSaved();
+  // Раньше SAVE жил только в памяти вкладки и терялся при перезагрузке —
+  // теперь то же самое, что кладём в SAVE, уходит в профиль (слот 2),
+  // поэтому "ПРОДОЛЖИТЬ" переживает закрытие вкладки и работает
+  // с другого устройства под тем же ником.
+  if(window.Profile)Profile.save(2,{id:SAVE.id,name:SAVE.name,inv:SAVE.inv});
 }
 function showSaved(){
   var el=document.getElementById('savedmsg');
@@ -8159,6 +8175,9 @@ buildTextures();
 buildMaterials();
 buildStore();
 menuOpen();
+// Сохранение из профиля (слот 2) подтягивается отдельно, в колбэке
+// Profile.init выше — оно обновит кнопку "ПРОДОЛЖИТЬ" сразу же,
+// как только станет известно, есть оно или нет.
 requestAnimationFrame(loop);
 </script>
 </body>
