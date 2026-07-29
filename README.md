@@ -67,12 +67,12 @@ part1.html  part2.html      сами игры, самодостаточные ф
 vendor/three.min.js         движок three.js r128 (лежит рядом — для офлайна)
 js/detail.js                слой детализации и автокачество
 js/updater.js               авто-обновление
-js/profile.js js/config.js  профиль и ключи Supabase
+js/profile.js                профиль, ник, прогресс
 sw.js                       офлайн-кэш
 manifest.webmanifest        установка на домашний экран
 android/                    исходники apk-оболочки + сборка без Gradle
 server/                     всё для сервера: docker, nginx, выкладка
-supabase/schema.sql         схема базы профилей
+api/server.js               сервер профилей и прогресса
 ```
 
 ## Разработка

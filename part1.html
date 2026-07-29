@@ -204,6 +204,7 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
      Если файла почему-то нет — подхватывается копия с CDN. -->
 <script src="vendor/three.min.js"></script>
 <script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
+<script src="js/controls.js"></script>
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
 <script>
@@ -818,12 +819,37 @@ var EYE_H=0.9,CROUCH_H=0.48,JUMP_V=0.055;
 //  INPUT
 // ============================================================
 var K={};
-document.addEventListener('keydown',function(e){if(dead)return;K[e.code]=true;if(e.code==='KeyF')toggleFL();if(e.code==='KeyE')doAct();if(e.code==='Space')e.preventDefault();});
-document.addEventListener('keyup',function(e){K[e.code]=false;});
+document.addEventListener('keydown',function(e){
+  if(window.CONTROLS&&CONTROLS.settingsOpen())return;
+  if(dead)return;
+  // Физическая клавиша переводится в ту, которую ждёт игра.
+  // Игрок переназначил вперёд на стрелку — сюда придёт 'KeyW'.
+  var c=window.CONTROLS?CONTROLS.canon(e.code):e.code;
+  K[c]=true;
+  if(c==='KeyF')toggleFL();
+  if(c==='KeyE')doAct();
+  if(c==='Space')e.preventDefault();
+});
+document.addEventListener('keyup',function(e){
+  K[window.CONTROLS?CONTROLS.canon(e.code):e.code]=false;
+});
 var locked=false;
-document.getElementById('renderer').addEventListener('click',function(){if(!('ontouchstart' in window))document.getElementById('renderer').requestPointerLock&&document.getElementById('renderer').requestPointerLock();});
+// Захват указателя и шестерёнка настроек — только там, где есть мышь.
+if(window.CONTROLS){
+  CONTROLS.enablePointerLock(document.getElementById('renderer'));
+  if(!CONTROLS.isTouch())CONTROLS.addGear();
+}else{
+  document.getElementById('renderer').addEventListener('click',function(){if(!('ontouchstart' in window))document.getElementById('renderer').requestPointerLock&&document.getElementById('renderer').requestPointerLock();});
+}
 document.addEventListener('pointerlockchange',function(){locked=document.pointerLockElement===document.getElementById('renderer');});
-document.addEventListener('mousemove',function(e){if(!locked||dead)return;P.yaw-=e.movementX*0.002;P.pitch=Math.max(-0.5,Math.min(0.5,P.pitch-e.movementY*0.002));});
+document.addEventListener('mousemove',function(e){
+  if(!locked||dead)return;
+  // Чувствительность и инверсия берутся из настроек.
+  var sx=window.CONTROLS?CONTROLS.mouseX():0.002;
+  var sy=window.CONTROLS?CONTROLS.mouseY():0.002;
+  P.yaw-=e.movementX*sx;
+  P.pitch=Math.max(-0.5,Math.min(0.5,P.pitch-e.movementY*sy));
+});
 function toggleFL(){
   P.fl=!P.fl;
   document.getElementById('fl-ui').textContent='🔦 '+(P.fl?'ВКЛ':'ВЫКЛ');
@@ -2637,6 +2663,7 @@ function loop(ts){
   } else { window.__ct=ts; update(ts); }
   updateDust(ts);
   if(window.DETAIL)DETAIL.tick(ts,camera.position.x,camera.position.y,camera.position.z);
+  if(window.CONTROLS)CONTROLS.tickPad(P,K,0.016);  // геймпад
   // Флаг для авто-обновления: пока идёт игра, страницу не перезагружаем
   // молча — вместо этого внизу появится полоска «ОБНОВИТЬ».
   window.MAGAZIN_IN_GAME=!!started;

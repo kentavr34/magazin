@@ -79,7 +79,7 @@ if grep -q "__BUILD__" sw.js; then die "номер сборки не подст�
 
 # ---------- проверка комплектности ----------
 for f in index.html part1.html part2.html sw.js version.json manifest.webmanifest \
-         vendor/three.min.js js/detail.js js/updater.js js/profile.js js/config.js \
+         vendor/three.min.js js/detail.js js/updater.js js/profile.js js/controls.js \
          icons/icon-192.png icons/icon-512.png; do
   [ -s "$f" ] || die "в сборке нет файла $f (или он пустой) — выкладка отменена"
 done

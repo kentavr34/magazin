@@ -30,6 +30,38 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Профили игроков и прогресс. Раньше это делал Supabase — теперь
+  # всё своё: ни внешней службы, ни ключей, ни чужих ограничений.
+  api:
+    image: node:24-alpine
+    container_name: magazin-api
+    restart: unless-stopped
+    working_dir: /app
+    # node:sqlite — встроенный модуль, никаких npm install:
+    # нечему ломаться при обновлении зависимостей.
+    command: ["node", "server.js"]
+    environment:
+      PORT: "8080"
+      DB_PATH: "/data/magazin.db"
+      NODE_ENV: "production"
+    ports:
+      - "127.0.0.1:8092:8080"
+    volumes:
+      - ./api:/app:ro
+      - ./data:/data
+    networks:
+      - magazin
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   magazin:
     name: magazin_net
