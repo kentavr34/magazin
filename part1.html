@@ -944,8 +944,9 @@ function createEntityMesh(){
 
 function spawnEntities(fl){
   entityMeshes.forEach(function(m){scene.remove(m);});entityMeshes=[];entities=[];
+  var dm=window.CONTROLS?CONTROLS.diffMul():1;  // сложность: скорость преследования
   function addEnt(x,z,spd,phrases){
-    var e={x:x,z:z,spd:spd,chase:false,hidden:true,sayT:180+Math.floor(Math.random()*120),phrases:phrases};
+    var e={x:x,z:z,spd:spd*dm,chase:false,hidden:true,sayT:180+Math.floor(Math.random()*120),phrases:phrases};
     entities.push(e);
     var mesh=createEntityMesh();mesh.position.set(x,1.1,z);scene.add(mesh);entityMeshes.push(mesh);
     return e;
@@ -960,7 +961,11 @@ function updateEntities(dt){
   if(P.hiding||HG.active)return;
   var anyChase=false;
   entities.forEach(function(e,i){
-    var d=edist(e);var rv=P.floor===3?2.5:3.2;
+    var d=edist(e);
+    // Радиус обнаружения — единственное, что трогает настройка сложности:
+    // сами уровни и сценарий не меняются, только на каком расстоянии
+    // противник замечает игрока. "Обычно" (множитель 1) — как было всегда.
+    var rv=(P.floor===3?2.5:3.2)*(window.CONTROLS?CONTROLS.diffMul():1);
     if(d<rv&&e.hidden){e.hidden=false;e.chase=true;flash(0.7,320);showWarn('МЕБЕЛЬЩИК ПРОСНУЛАСЬ!');sndScare();sayE('Ты нашёл меня. Теперь беги.');}
     var mesh=entityMeshes[i];
     if(mesh){
@@ -1154,7 +1159,9 @@ function updateF4(dt){
   // --- шум ---
   var target=f4Noise();
   F4.noise+=(target-F4.noise)*0.10;
-  var hearR=F4.noise*18;                   // радиус слышимости в клетках
+  // Радиус слышимости — тот же множитель сложности, что и у остальных
+  // противников. "Обычно" (1) — как было всегда.
+  var hearR=F4.noise*18*(window.CONTROLS?CONTROLS.diffMul():1);
 
   var dx=P.x-b.x,dz=P.z-b.z;
   var d=Math.sqrt(dx*dx+dz*dz)||0.001;

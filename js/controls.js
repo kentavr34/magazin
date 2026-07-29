@@ -51,8 +51,15 @@
     mouse: 1.0,           /* множитель чувствительности */
     invertY: false,
     padLook: 1.0,
-    padDead: 0.18         /* мёртвая зона стика: изношенный геймпад «плывёт» */
+    padDead: 0.18,        /* мёртвая зона стика: изношенный геймпад «плывёт» */
+    difficulty: 1         /* 0 легче, 1 обычно (заводское поведение игры), 2 сложнее */
   };
+  /* Один множитель на скорость и слух противников. По умолчанию (1)
+     ровно то же поведение, что было в игре всегда — этот множитель
+     нигде не меняет сюжет и уровни, только то, насколько быстро
+     и издалека противник замечает игрока. */
+  var DIFF_MUL = [0.8, 1.0, 1.25];
+  C.diffMul = function () { return DIFF_MUL[S.difficulty]; };
 
   function defaults() {
     var b = {};
@@ -76,6 +83,7 @@
       if (typeof j.mouse === 'number') S.mouse = clamp(j.mouse, 0.2, 4);
       if (typeof j.invertY === 'boolean') S.invertY = j.invertY;
       if (typeof j.padLook === 'number') S.padLook = clamp(j.padLook, 0.2, 4);
+      if (j.difficulty === 0 || j.difficulty === 1 || j.difficulty === 2) S.difficulty = j.difficulty;
     } catch (e) { }
   }
   function save() {
@@ -234,6 +242,7 @@
     ui.innerHTML = '<div class="in"><h2>Н А С Т Р О Й К И</h2>' +
       '<h3>УПРАВЛЕНИЕ</h3><div id="mg-keys"></div>' +
       '<h3>МЫШЬ И ГЕЙМПАД</h3><div id="mg-mouse"></div>' +
+      '<h3>СЛОЖНОСТЬ</h3><div id="mg-diff"></div>' +
       '<h3>КАЧЕСТВО КАРТИНКИ</h3><div id="mg-q"></div>' +
       '<button class="btn" id="mg-reset">СБРОСИТЬ К ЗАВОДСКИМ</button>' +
       '<button class="btn" id="mg-close">ЗАКРЫТЬ</button>' +
@@ -243,7 +252,7 @@
 
     ui.querySelector('#mg-close').onclick = C.closeSettings;
     ui.querySelector('#mg-reset').onclick = function () {
-      S.binds = defaults(); S.mouse = 1; S.invertY = false; S.padLook = 1;
+      S.binds = defaults(); S.mouse = 1; S.invertY = false; S.padLook = 1; S.difficulty = 1;
       save(); render();
     };
     return ui;
@@ -281,6 +290,30 @@
     mouse.appendChild(toggle('Инверсия оси Y', S.invertY, function (v) {
       S.invertY = v; save();
     }));
+
+    var diff = ui.querySelector('#mg-diff');
+    diff.innerHTML = '';
+    (function () {
+      var names = ['МНЕ ЛЕГЧЕ', 'ОБЫЧНО', 'МНЕ СЛОЖНЕЕ'];
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<div class="n">Реакция и слух противников</div>';
+      var b = document.createElement('button');
+      b.className = 'k'; b.style.minWidth = '140px';
+      b.textContent = names[S.difficulty];
+      b.onclick = function () {
+        S.difficulty = (S.difficulty + 1) % 3;
+        b.textContent = names[S.difficulty];
+        save();
+      };
+      row.appendChild(b);
+      diff.appendChild(row);
+      var h = document.createElement('div');
+      h.className = 'hint';
+      h.textContent = 'Не меняет уровни и сюжет — только то, насколько быстро ' +
+        'и издалека противник замечает игрока. «Обычно» — как было всегда.';
+      diff.appendChild(h);
+    })();
 
     var q = ui.querySelector('#mg-q');
     q.innerHTML = '';
