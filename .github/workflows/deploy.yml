@@ -1,0 +1,36 @@
+# Запасной путь выкладки: пинает сервер сразу после push,
+# не дожидаясь, пока сработает крон на сервере.
+#
+# Работает ТОЛЬКО если в настройках репозитория заведён секрет
+# SERVER_SSH_KEY (приватный ключ доступа к 45.67.216.36).
+# Без секрета шаг тихо пропускается — выкладку всё равно сделает
+# крон /opt/magazin/autopull.sh, просто минутой-двумя позже.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверить, есть ли ключ
+        id: check
+        run: |
+          if [ -n "${{ secrets.SERVER_SSH_KEY }}" ]; then
+            echo "ready=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=no" >> "$GITHUB_OUTPUT"
+            echo "Секрет SERVER_SSH_KEY не задан — выкладку сделает крон на сервере."
+          fi
+
+      - name: Выложить на сервер
+        if: steps.check.outputs.ready == 'yes'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 45.67.216.36 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -o BatchMode=yes root@45.67.216.36 '/opt/magazin/deploy.sh'

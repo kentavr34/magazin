@@ -1,0 +1,28 @@
+# ============================================================
+#  АНТИСОН
+#  Бесплатный проект Supabase засыпает после недели без запросов.
+#  Этот пинг ходит раз в трое суток и не даёт ему уснуть.
+#  Репозиторий публичный — минуты Actions не расходуются.
+# ============================================================
+name: keepalive
+
+on:
+  schedule:
+    - cron: '17 5 */3 * *'     # каждые 3 суток
+  workflow_dispatch:            # и вручную кнопкой
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Пинг Supabase
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$URL" ]; then echo "Секреты не заданы — пропускаю"; exit 0; fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+            "$URL/rest/v1/profiles?select=id&limit=1")
+          echo "Ответ базы: $code"
+          if [ "$code" = "000" ]; then echo "Нет связи"; exit 1; fi

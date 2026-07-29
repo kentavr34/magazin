@@ -1,0 +1,21 @@
+# Скрипты и конфиги сервера обязаны иметь переводы строк в стиле Linux.
+# С windows-переносами bash спотыкается на первой же строке.
+*.sh        text eol=lf
+*.conf      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+Dockerfile  text eol=lf
+
+*.js        text eol=lf
+*.json      text eol=lf
+*.html      text eol=lf
+*.md        text eol=lf
+*.xml       text eol=lf
+*.sql       text eol=lf
+manifest.webmanifest text eol=lf
+
+# Двоичное — не трогать
+*.png       binary
+*.apk       binary
+*.keystore  binary
+vendor/three.min.js -text

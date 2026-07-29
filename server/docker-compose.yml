@@ -1,0 +1,35 @@
+# Отдельный контейнер только под игру.
+# Ничего общего с chesscoin / jobtop / claudia: своя сеть, свой том,
+# свой порт. Остановка или пересборка этого контейнера не затрагивает
+# ни один другой проект на сервере.
+services:
+  web:
+    image: nginx:1.27-alpine
+    container_name: magazin-web
+    restart: unless-stopped
+    # Наружу порт не выставляем: снаружи ходит только nginx хоста.
+    ports:
+      - "127.0.0.1:8091:80"
+    volumes:
+      # Монтируем всю папку проекта, а корнем сайта делаем /srv/www —
+      # это символическая ссылка на текущую версию внутри releases/.
+      # Так выкладка новой версии = перестановка ссылки, без остановки
+      # контейнера. Наружу при этом видно только содержимое www.
+      - .:/srv:ro
+      - ./nginx/site.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - magazin
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/version.json"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  magazin:
+    name: magazin_net

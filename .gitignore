@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+*.log
+.env
+
+# Сборочный мусор Android. keystore — тем более: потеряется ключ,
+# и обновить уже установленное приложение станет нельзя.
+android/build/
+android/keystore/
+*.apk
+
+# Номер сборки проставляет сервер при выкладке
+version.json

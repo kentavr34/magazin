@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Заброшенный магазин</string>
+    <string name="offline_title">Нет интернета</string>
+    <string name="offline_text">Первый запуск игры требует связи: приложение скачивает игру и дальше открывается уже без интернета.</string>
+    <string name="retry">ПОВТОРИТЬ</string>
+    <string name="exit_hint">Нажмите ещё раз, чтобы выйти</string>
+</resources>
