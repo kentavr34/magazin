@@ -286,8 +286,12 @@ const server = http.createServer(async (req, res) => {
 
     if (routes[key]) return await routes[key](req, res);
 
-    /* прогресс части: /api/save/1, /api/save/2 */
-    const m = /^\/api\/save\/([12])$/.exec(url.pathname);
+    /* прогресс части: /api/save/1, /api/save/2.
+       /api/save/0 — служебный слот: не сохранение внутри игры,
+       а метки вида "часть I пройдена", по которым index.html
+       решает, открывать ли часть II. Тот же протокол, та же
+       офлайн-логика — не пришлось заводить отдельный endpoint. */
+    const m = /^\/api\/save\/([0-9])$/.exec(url.pathname);
     if (m) {
       const p = whoIs(req);
       if (!p) return send(res, 401, { error: 'не узнал' });

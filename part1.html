@@ -204,10 +204,16 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
      Если файла почему-то нет — подхватывается копия с CDN. -->
 <script src="vendor/three.min.js"></script>
 <script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
+<script src="js/profile.js"></script>
+<script src="js/progress.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
 <script>
+// Нужен только Progress (метка "часть I пройдена"), поэтому профиль
+// заводится тихо, без формы ника и пароля — она осталась на index.html.
+if(window.Profile)Profile.init(function(){});
+
 // ============================================================
 //  THREE.JS SETUP
 // ============================================================
@@ -2095,6 +2101,9 @@ function checkNear(){
 function winGame(){
   BossMusic.outro();          // музыка не обрывается, а доигрывает финал
   dead=true;stopChaseMusic();
+  // Отмечаем часть I пройденной — от этого зависит, откроется ли
+  // часть II на главной странице.
+  if(window.Progress)Progress.markComplete('part1');
   ['boss-hpbar','bshoot','weapon-ui','blue-cube-ui'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   var fade=document.createElement('div');
   fade.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:90;opacity:0;transition:opacity 2s;';

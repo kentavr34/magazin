@@ -17,6 +17,7 @@ var CORE = [
   './part2.html',
   './vendor/three.min.js',
   './js/profile.js',
+  './js/progress.js',
   './js/detail.js',
   './js/controls.js',
   './js/updater.js',

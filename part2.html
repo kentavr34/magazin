@@ -280,10 +280,16 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
      Если файла почему-то нет — подхватывается копия с CDN. -->
 <script src="vendor/three.min.js"></script>
 <script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
+<script src="js/profile.js"></script>
+<script src="js/progress.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
 <script>
+// Нужен только Progress (метки прохождения), поэтому профиль
+// заводится тихо, без формы ника и пароля — она осталась на index.html.
+if(window.Profile)Profile.init(function(){});
+
 // ============================================================
 //  ЯДРО: сцена, текстуры, материалы
 // ============================================================

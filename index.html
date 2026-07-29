@@ -40,6 +40,10 @@ a.card span{font-size:11px;color:#8a8578;line-height:1.6}
 input{width:100%;margin-top:8px;background:#0d0d12;color:#ded7c8;border:1px solid rgba(255,255,255,.2);
   padding:10px;font-family:inherit;font-size:13px}
 .hide{display:none}
+a.card.locked{cursor:default;opacity:.5;border-left-color:#4a453e}
+a.card.locked:hover{border-color:rgba(255,255,255,.2);background:rgba(16,16,22,.9);transform:none}
+a.card .lock{float:right;font-size:13px;color:#8a8578}
+#lvlnote{font-size:10px;color:#8a8578;margin-top:2px}
 .note{margin-top:20px;font-size:10px;color:#4a4650;line-height:1.9}
 #msg{margin-top:9px;font-size:11px;min-height:15px;color:#c9a227}
 </style>
@@ -52,8 +56,9 @@ input{width:100%;margin-top:8px;background:#0d0d12;color:#ded7c8;border:1px soli
 
   <a class="card" href="part1.html"><b>ЧАСТЬ I</b>
     <span>Охранник возвращается в магазин, где пропадали люди. Четыре этажа и чердак.</span></a>
-  <a class="card" href="part2.html"><b>ЧАСТЬ II</b>
-    <span>Сон, побег, тюрьма, склады и приют под землёй.</span></a>
+  <a class="card" href="part2.html" id="card2"><b>ЧАСТЬ II <span class="lock hide" id="lock2">🔒</span></b>
+    <span id="card2sub">Сон, побег, тюрьма, склады и приют под землёй.</span></a>
+  <div id="lvlnote" class="hide">Пройдите часть I до конца, чтобы открыть часть II.</div>
 
   <div id="prof">
     <div class="t">ПРОФИЛЬ</div>
@@ -89,6 +94,7 @@ input{width:100%;margin-top:8px;background:#0d0d12;color:#ded7c8;border:1px soli
 </div>
 
 <script src="js/profile.js"></script>
+<script src="js/progress.js"></script>
 <script src="js/updater.js"></script>
 <script>
 function $(id){return document.getElementById(id);}
@@ -120,7 +126,35 @@ function doLogin(){
   });
 }
 function doLogout(){Profile.logout(function(){location.reload();});}
-Profile.init(refresh);
+
+// Часть II заперта, пока не пройдена часть I — первый уровень
+// системы "прошёл первое, открылось следующее".
+function applyLevelGate(){
+  var done=Progress.isCompleteSync('part1');
+  var card=$('card2');
+  if(done){
+    card.classList.remove('locked');
+    card.removeAttribute('aria-disabled');
+    $('lock2').classList.add('hide');
+    $('card2sub').textContent='Сон, побег, тюрьма, склады и приют под землёй.';
+    $('lvlnote').classList.add('hide');
+  }else{
+    card.classList.add('locked');
+    card.setAttribute('aria-disabled','true');
+    $('lock2').classList.remove('hide');
+    $('card2sub').textContent='Открывается после прохождения части I.';
+    $('lvlnote').classList.remove('hide');
+  }
+}
+$('card2').addEventListener('click',function(e){
+  if(this.classList.contains('locked')){e.preventDefault();}
+});
+
+Profile.init(function(){
+  refresh();
+  applyLevelGate();               // мгновенно из локального кэша
+  Progress.refresh(applyLevelGate); // и следом сверяемся с сервером
+});
 
 // Номер сборки внизу страницы — по нему видно, доехало ли обновление.
 fetch('version.json?t='+Date.now(),{cache:'no-store'})
