@@ -245,7 +245,7 @@ function initThree(){
 
   // Flashlight — spotlight attached to camera
   flashlight=new THREE.SpotLight(0xfff5e0,3.5,20,Math.PI/4,0.45,1.5);
-  flashlight.castShadow=false;
+  flashlight.castShadow=false;   // DETAIL включит настоящую тень, если качество позволяет
   camera.add(flashlight);
   flashlight.position.set(0,0,0);
   flashlight.target.position.set(0,0,-1);
@@ -261,7 +261,10 @@ function initThree(){
   });
   // Пыль здесь своя (initDust), поэтому у DETAIL берём только
   // тени, потолок разрешения, зерно и автокачество.
-  if(window.DETAIL)DETAIL.upgradeRenderer(renderer,scene,camera);
+  if(window.DETAIL){
+    DETAIL.upgradeRenderer(renderer,scene,camera);
+    DETAIL.setupFlashlightShadow(flashlight);
+  }
 }
 
 // ============================================================

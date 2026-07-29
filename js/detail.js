@@ -237,6 +237,21 @@
     } catch (e) { warn(e); }
   };
 
+  /* Фонарь в руках игрока — источник, который двигается каждый кадр,
+     поэтому тень от него дороже статичной лампы. Включаем только
+     с уровня 2 ("Хорошее"), тем же порогом, что и у остальных теней. */
+  D.setupFlashlightShadow = function (spotLight) {
+    try {
+      if (!Q().shadow || !spotLight || lvl < 2) return;
+      spotLight.castShadow = true;
+      spotLight.shadow.mapSize.set(Q().shadow, Q().shadow);
+      spotLight.shadow.camera.near = 0.08;
+      spotLight.shadow.camera.far = spotLight.distance || 20;
+      spotLight.shadow.bias = -0.0025;
+      spotLight.shadow.normalBias = 0.02;
+    } catch (e) { warn(e); }
+  };
+
   /* Каждый добавленный в сцену объект: пол и стены принимают тень,
      мебель ещё и отбрасывает. Крупный плоский объект тень не бросает —
      это пол, от него теней не бывает, а расчёт стоит. */
