@@ -168,6 +168,7 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
   <div class="row"><b>Свайп по экрану</b> — поворот камеры</div>
   <div class="row"><b>Кнопки справа</b> — бег / присесть / прыжок / фонарик</div>
   <button id="startbtn" onclick="startGame()">ВОЙТИ В МАГАЗИН</button>
+  <button id="continuebtn" onclick="continueGame()" style="margin-top:10px;display:none;">ПРОДОЛЖИТЬ — ЭТАЖ <span id="continuefloor">2</span></button>
 </div>
 <div id="endscreen">
   <div id="endtitle">ВЫ ПОГИБЛИ</div>
@@ -210,9 +211,8 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
 <script>
-// Нужен только Progress (метка "часть I пройдена"), поэтому профиль
-// заводится тихо, без формы ника и пароля — она осталась на index.html.
-if(window.Profile)Profile.init(function(){});
+// Profile.init вызывается один раз, ниже по файлу — там же, где
+// используется его результат (кнопка "продолжить" на чек-пойнте).
 
 // ============================================================
 //  THREE.JS SETUP
@@ -1851,28 +1851,50 @@ function doAct(){
   else if(nDoor)doorTry();
 }
 function doorTry(){P.doorN++;var t=P.doorN===1?'Закрыто.':P.doorN===2?'Заперто...':'Да блин, все двери заперты!';showMsg(t,2500);say(t,0.82,0.52);}
-function goUp(){
-  var cfgs={1:{floor:2,map:2,x:1.5,z:1.5,lbl:'ЭТАЖ 2',ents:2},2:{floor:3,map:3,x:1.5,z:1.5,lbl:'ЭТАЖ 3',ents:3},3:{floor:4,map:4,x:10,z:1.5,lbl:'ЧЕРДАК',ents:0}};
-  var cfg=cfgs[P.floor];if(!cfg)return;
-  P.floor=cfg.floor;currentMap=MAPS[cfg.map];P.x=cfg.x;P.z=cfg.z;P.yaw=0;
-  if(cfg.floor===4){BossMusic.start();BossMusic.setLevel(0.55);} else BossMusic.stop();
-  if(cfg.floor===4){chaseOn=false;chaseActive=false;}
-  clearScene();buildFloor(cfg.floor);
-  spawnEntities(cfg.ents);
+
+// ---------- координаты входа на этаж ----------
+function floorCfg(n){
+  var C={1:{map:1,x:3.5,z:3.5,lbl:'ЭТАЖ 1'},
+         2:{map:2,x:1.5,z:1.5,lbl:'ЭТАЖ 2'},
+         3:{map:3,x:1.5,z:1.5,lbl:'ЭТАЖ 3'},
+         4:{map:4,x:10,z:1.5,lbl:'ЧЕРДАК'}};
+  return C[n]||C[1];
+}
+// Ставит игрока в начало указанного этажа. Используется и обычным
+// подъёмом по лестнице (goUp), и возвратом на чек-пойнт после смерти,
+// и кнопкой "продолжить" на стартовом экране — поэтому вся логика
+// размещения и вступительных реплик собрана в одном месте.
+function enterFloorAt(floorNum,opts){
+  opts=opts||{};
+  var cfg=floorCfg(floorNum);
+  P.floor=floorNum;currentMap=MAPS[cfg.map];P.x=cfg.x;P.z=cfg.z;P.yaw=0;
+  flashlight.intensity=2.5;
+  if(floorNum===4){BossMusic.start();BossMusic.setLevel(0.55);chaseOn=false;chaseActive=false;}
+  else BossMusic.stop();
+  clearScene();buildFloor(floorNum);
+  spawnEntities(floorNum);
   document.getElementById('floor-ui').textContent=cfg.lbl;setPrompt('',false);
   // Экспоненциальный туман вместо линейного: даёт мягкое естественное
   // затухание вдаль, а не резкую границу видимости.
-  var dens=cfg.floor===1?0.048:cfg.floor===2?0.062:cfg.floor===3?0.088:0.135;
+  var dens=floorNum===1?0.048:floorNum===2?0.062:floorNum===3?0.088:0.135;
   scene.fog=new THREE.FogExp2(0x07060a,dens);
-  ambientLight.intensity=cfg.floor===4?0.03:0.12;   // на чердаке почти полная тьма
-  if(cfg.floor===2){showMsg('Второй этаж. Здесь что-то не так...',3000);say('Второй этаж. Темнее. И этот запах.',0.8,0.52);setTimeout(function(){showMsg('Осторожно. Мебель здесь живая.',3000);},5000);}
-  else if(cfg.floor===3){showMsg('Третий этаж.',2000);say('Третий этаж.',0.76,0.48);setTimeout(function(){showMsg('Их здесь намного больше.',2500);},3200);}
-  else if(cfg.floor===4){
+  ambientLight.intensity=floorNum===4?0.03:0.12;   // на чердаке почти полная тьма
+  // Дошли до этажа N — запоминаем как чек-пойнт. Прогресс только растёт:
+  // с более раннего этажа сюда не откатимся, даже зайдя с другого устройства.
+  if(window.Progress)Progress.setValue('p1_maxfloor',floorNum);
+  if(opts.messages===false)return;
+  if(floorNum===2){showMsg('Второй этаж. Здесь что-то не так...',3000);say('Второй этаж. Темнее. И этот запах.',0.8,0.52);setTimeout(function(){showMsg('Осторожно. Мебель здесь живая.',3000);},5000);}
+  else if(floorNum===3){showMsg('Третий этаж.',2000);say('Третий этаж.',0.76,0.48);setTimeout(function(){showMsg('Их здесь намного больше.',2500);},3200);}
+  else if(floorNum===4){
     f4Start();
     showMsg('Чердак. Он уже здесь.',3000);
     say('Он уже здесь. Он меня не видит.',0.8,0.5);
     setTimeout(function(){if(!dead){showMsg('Он слепой. Иди сидя — он слышит шаги.',4000);say('Он слепой. Но слышит.',0.78,0.48);}},4200);
   }
+}
+function goUp(){
+  var next={1:2,2:3,3:4}[P.floor];if(!next)return;
+  enterFloorAt(next);
 }
 function hideBed(){P.hiding=true;startHeartGame(entities);}
 
@@ -2131,15 +2153,19 @@ function restartGame(){
   document.removeEventListener('keydown',hgKey);
   // Reset maps
   MAPS[4][18][8]=1;MAPS[4][18][9]=1;MAPS[4][18][10]=1;
-  currentMap=MAPS[1];P.x=3.5;P.z=3.5;P.yaw=0;P.pitch=0;P.hp=100;P.fl=true;P.floor=1;
+  P.pitch=0;P.hp=100;P.fl=true;
   P.trapped=false;P.trapT=0;P.trapCD=0;P.doorN=0;P.hiding=false;P.stepT=0;P.bobT=0;P.bobAmt=0;P.vy=0;P.onGround=true;P.jump=false;P.crouch=false;P.currentH=EYE_H;
   HG.phase=0;HG.mistakes=0;HG.active=false;HG.beats=0;
   entityMeshes.forEach(function(m){scene.remove(m);});entityMeshes=[];entities=[];
   f4Reset();STAM.v=1;STAM.tired=false;FLV.shown=true;FLV.offT=0;FLV.y=FL_UP;
-  flashlight.intensity=2.5;clearScene();buildFloor(1);
-  scene.fog=new THREE.FogExp2(0x07060a,0.048);updateHP();
-  document.getElementById('floor-ui').textContent='ЭТАЖ 1';document.getElementById('fl-ui').textContent='🔦 ВКЛ';setPrompt('',false);
-  setTimeout(intro,400);
+  updateHP();document.getElementById('fl-ui').textContent='🔦 ВКЛ';setPrompt('',false);
+  // Смерть возвращает не на первый этаж, а на чек-пойнт — самый дальний
+  // этаж, до которого игрок уже доходил. Иначе одна ошибка на верхнем
+  // этаже заставляла бы повторять весь подъём заново.
+  var checkpoint=(window.Progress&&Progress.getValueSync('p1_maxfloor'))||1;
+  enterFloorAt(checkpoint,{messages:false});
+  if(checkpoint<=1)setTimeout(intro,400);
+  else showMsg('Начинаем с этажа, до которого дошли.',2600);
 }
 
 // ============================================================
@@ -2705,6 +2731,27 @@ function startGame(){
   setTimeout(function(){BossMusic.prepare();},60);
   setTimeout(intro,400);
 }
+// Кнопка "ПРОДОЛЖИТЬ" — как startGame(), но без вводных реплик
+// (они уже прозвучали в прошлый раз) и сразу на чек-пойнте.
+function continueGame(){
+  document.getElementById('start').style.display='none';
+  unlockSpeech();getAC();started=true;
+  startAmbient();
+  showMsg('Настройка звука...',1400);
+  setTimeout(function(){BossMusic.prepare();},60);
+  var n=(window.Progress&&Progress.getValueSync('p1_maxfloor'))||1;
+  setTimeout(function(){enterFloorAt(n,{messages:false});showMsg('Продолжаем с этажа, до которого дошли.',2800);},400);
+}
+// Кнопка "продолжить" появляется, только если чек-пойнт дальше первого
+// этажа — иначе она была бы неотличима от обычного "войти в магазин".
+function refreshContinueButton(){
+  var n=(window.Progress&&Progress.getValueSync('p1_maxfloor'))||1;
+  var btn=document.getElementById('continuebtn');
+  if(!btn)return;
+  if(n>1){document.getElementById('continuefloor').textContent=(n===4?'ЧЕРДАК':n);btn.style.display='';}
+  else btn.style.display='none';
+}
+if(window.Profile)Profile.init(function(){ if(window.Progress)Progress.refresh(refreshContinueButton); });
 
 // INIT
 initThree();

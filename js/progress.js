@@ -1,11 +1,16 @@
 /* ============================================================
-   PROGRESS — метки прохождения ("часть I пройдена" и т.п.)
+   PROGRESS — метки и счётчики прохождения
    ------------------------------------------------------------
-   Отдельно от SAVE самой части: это не точка возврата в игре,
-   а флаг для системы уровней — на нём держится "прошёл первое,
-   открылось следующее". Хранится через тот же Profile, слот 0,
+   Не путать с SAVE самой части: это не точка возврата в игре,
+   а данные системы уровней — "часть I пройдена", "дошёл до
+   этажа 3" и так далее. Хранится через тот же Profile, слот 0,
    поэтому работает офлайн и синхронизируется между устройствами
    так же, как обычный прогресс.
+
+   Значения только РАСТУТ. Если с двух устройств пришли разные
+   цифры для одного ключа — побеждает большая (флаг true побеждает
+   false, этаж 3 побеждает этаж 1). Так прогресс никогда не
+   откатывается назад, с какого бы устройства ни зашёл игрок.
    ============================================================ */
 (function (global) {
   'use strict';
@@ -24,31 +29,43 @@
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(v)); } catch (e) { }
   }
 
+  /* "Больше" — это true > false, и большее число > меньшего. */
+  function moreAdvanced(a, b) {
+    if (a === undefined) return b;
+    if (b === undefined) return a;
+    if (typeof a === 'number' || typeof b === 'number') return Math.max(Number(a) || 0, Number(b) || 0);
+    return !!(a || b);
+  }
+
   var Progress = {};
 
   /* Быстрый неблокирующий ответ из локального кэша — чтобы страница
      не мигала "заблокировано" на время, пока идёт запрос к серверу. */
-  Progress.isCompleteSync = function (key) {
-    return !!readCache()[key];
-  };
+  Progress.getValueSync = function (key) { return readCache()[key]; };
+  Progress.isCompleteSync = function (key) { return !!readCache()[key]; };
 
-  Progress.markComplete = function (key, cb) {
+  Progress.setValue = function (key, value, cb) {
     var flags = readCache();
-    if (flags[key]) { if (cb) cb(true); return; }     /* уже отмечено — не дёргаем сеть повторно */
-    flags[key] = true;
+    var merged = moreAdvanced(flags[key], value);
+    if (flags[key] === merged) { if (cb) cb(true); return; }   /* не стало новее — сеть не дёргаем */
+    flags[key] = merged;
     writeCache(flags);
     if (!global.Profile) { if (cb) cb(true); return; }
     global.Profile.save(0, flags, function (r) { if (cb) cb(!!r.ok); });
   };
 
+  Progress.markComplete = function (key, cb) { Progress.setValue(key, true, cb); };
+
   Progress.refresh = function (cb) {
     cb = cb || function () { };
     if (!global.Profile) return cb(readCache());
     global.Profile.load(0, function (data) {
-      var flags = data && typeof data === 'object' ? data : {};
-      /* Локальные отметки не теряем, даже если облако ещё не в курсе —
-         иначе быстрый переход между вкладками мог бы откатить разблокировку. */
-      var merged = Object.assign({}, flags, readCache());
+      var cloud = data && typeof data === 'object' ? data : {};
+      var local = readCache();
+      var merged = {};
+      Object.keys(cloud).concat(Object.keys(local)).forEach(function (k) {
+        merged[k] = moreAdvanced(local[k], cloud[k]);
+      });
       writeCache(merged);
       cb(merged);
     });
