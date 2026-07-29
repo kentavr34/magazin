@@ -33,10 +33,21 @@
     { tex: 512, aniso: 16, aa: true, pr: 2.00, shadow: 2048, dust: 900, shafts: true, grain: true }
   ];
 
+  /* Номер правил подбора качества. Меняется, когда меняется сама логика
+     замера, — тогда старое запомненное значение выбрасывается. Иначе
+     телефон, которому когда-то ошибочно занизили качество, так и остался
+     бы на нём навсегда. */
+  var QRULES = '2';
+
   function guessLevel() {
     try {
-      var saved = localStorage.getItem('magazin_q');
-      if (saved !== null) return Math.max(0, Math.min(3, parseInt(saved, 10) || 0));
+      if (localStorage.getItem('magazin_q_rules') === QRULES) {
+        var saved = localStorage.getItem('magazin_q');
+        if (saved !== null) return Math.max(0, Math.min(3, parseInt(saved, 10) || 0));
+      } else {
+        localStorage.removeItem('magazin_q');
+        localStorage.setItem('magazin_q_rules', QRULES);
+      }
     } catch (e) { }
     var mob = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
     var cores = navigator.hardwareConcurrency || (mob ? 4 : 8);
@@ -349,12 +360,29 @@
 
   /* ============================================================
      6. АВТОКАЧЕСТВО
-     Считаем кадры за секунду. Просело ниже 42 два окна подряд —
+     Считаем кадры за секунду. Просело ниже 42 три окна подряд —
      снимаем ступень. Держится выше 57 десять секунд — возвращаем.
      Настройка запоминается, поэтому со второго запуска телефон
      сразу стартует на своём уровне.
+
+     Замер приходится защищать от ложных срабатываний. Когда игру
+     свернули или переключились на другое приложение, браузер
+     перестаёт рисовать кадры — и наивный счётчик видит «один кадр
+     в секунду», после чего навсегда роняет качество до худшего.
+     Поэтому окно засчитывается, только если экран виден, кадров
+     в нём набралось достаточно и не было длинной паузы.
      ============================================================ */
   var frames = 0, winStart = 0, lowRuns = 0, highRuns = 0, grainPhase = 0, locked = false;
+  var lastFrameAt = 0;
+  var MIN_FRAMES = 20;      /* меньше — судить не о чем */
+  var STALL_MS = 250;       /* пауза длиннее — это не низкий FPS, а остановка */
+
+  function resetWindow(now) { frames = 0; winStart = now; lowRuns = 0; highRuns = 0; }
+
+  /* Вернулись на вкладку — начинаем мерить с чистого листа. */
+  document.addEventListener('visibilitychange', function () {
+    resetWindow(0); lastFrameAt = 0;
+  });
 
   D.lockQuality = function () { locked = true; };
 
@@ -362,7 +390,10 @@
     n = Math.max(0, Math.min(3, n));
     if (n === lvl) return;
     lvl = n;
-    try { localStorage.setItem('magazin_q', String(n)); } catch (e) { }
+    try {
+      localStorage.setItem('magazin_q', String(n));
+      localStorage.setItem('magazin_q_rules', QRULES);
+    } catch (e) { }
     applyLevel();
   };
 
@@ -399,26 +430,47 @@
         overlay.style.backgroundPosition = grainPhase + 'px ' + ((grainPhase * 7) % 128) + 'px, center';
       }
 
-      /* окно замера FPS */
+      /* ---------- окно замера FPS ---------- */
+      var gap = lastFrameAt ? (nowMs - lastFrameAt) : 0;
+      lastFrameAt = nowMs;
+
+      /* Экран не виден или между кадрами была длинная пауза —
+         это свёрнутая игра или загрузка уровня, а не слабое железо.
+         Такое окно выбрасываем целиком. */
+      if (document.hidden || gap > STALL_MS) { resetWindow(nowMs); return; }
+
       frames++;
       if (!winStart) winStart = nowMs;
-      if (nowMs - winStart >= 1000) {
-        var fps = frames * 1000 / (nowMs - winStart);
-        frames = 0; winStart = nowMs;
-        if (!locked) {
-          if (fps < 42) { lowRuns++; highRuns = 0; if (lowRuns >= 2 && lvl > 0) { D.setLevel(lvl - 1); lowRuns = 0; } }
-          else if (fps > 57) { highRuns++; lowRuns = 0; if (highRuns >= 10 && lvl < 3) { D.setLevel(lvl + 1); highRuns = 0; } }
-          else { lowRuns = 0; highRuns = 0; }
+      var span = nowMs - winStart;
+      if (span >= 1000) {
+        if (frames >= MIN_FRAMES) {
+          var fps = frames * 1000 / span;
+          if (!locked) {
+            if (fps < 42) {
+              lowRuns++; highRuns = 0;
+              if (lowRuns >= 3 && lvl > 0) { D.setLevel(lvl - 1); lowRuns = 0; }
+            } else if (fps > 57) {
+              highRuns++; lowRuns = 0;
+              if (highRuns >= 10 && lvl < 3) { D.setLevel(lvl + 1); highRuns = 0; }
+            } else { lowRuns = 0; highRuns = 0; }
+          }
         }
+        frames = 0; winStart = nowMs;
       }
     } catch (e) { }
   };
 
   function warn(e) { if (window.console && console.warn) console.warn('[detail]', e); }
 
-  /* Отладка с телефона: ?q=0..3 фиксирует качество вручную */
+  /* ?q=0..3 — зафиксировать качество вручную (для проверки с телефона).
+     ?q=auto — забыть запомненный уровень и подобрать заново. */
   try {
-    var m = /[?&]q=([0-3])/.exec(location.search);
-    if (m) { lvl = parseInt(m[1], 10); locked = true; }
+    if (/[?&]q=auto\b/.test(location.search)) {
+      localStorage.removeItem('magazin_q');
+      lvl = guessLevel();
+    } else {
+      var m = /[?&]q=([0-3])/.exec(location.search);
+      if (m) { lvl = parseInt(m[1], 10); locked = true; }
+    }
   } catch (e) { }
 })();
