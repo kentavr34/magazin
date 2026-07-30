@@ -40,10 +40,53 @@
      через Progress, чтобы пережить переустановку/смену устройства. */
   var LS_UV = 'magazin_uv_skin';
   var UV_SKINS = [
-    { id: 'default', name: 'Обычный', price: 0 },
-    { id: 'terminator', name: 'Терминатор (хром + молнии)', price: 50 }
+    { id: 'default', name: 'Обычный', price: 0, body: '#141416', accent: '#9a7aff' },
+    { id: 'terminator', name: 'Терминатор (хром + молнии)', price: 50, body: '#8a8f9a', accent: '#ff2020' },
+    { id: 'uvelite', name: 'UV ELITE (голограмма)', price: 60, body: '#18121f', accent: '#c86bff' }
   ];
   var uvById = {}; UV_SKINS.forEach(function (s) { uvById[s.id] = s; });
+
+  /* Маленькая превью-иконка скина — рисуется на canvas, никаких
+     внешних картинок. Игрок должен видеть, на что похож скин,
+     а не только читать название цвета. */
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  var iconCache = {};
+  function flashlightIcon(lensHex) {
+    var key = 'fl:' + lensHex;
+    if (iconCache[key]) return iconCache[key];
+    var c = document.createElement('canvas'); c.width = c.height = 56;
+    var g = c.getContext('2d');
+    g.fillStyle = '#26262c'; roundRect(g, 6, 22, 30, 12, 4); g.fill();
+    g.fillStyle = '#1a1a1e'; roundRect(g, 34, 18, 14, 20, 4); g.fill();
+    var grad = g.createRadialGradient(46, 28, 1, 46, 28, 13);
+    grad.addColorStop(0, lensHex); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad; g.beginPath(); g.arc(46, 28, 13, 0, Math.PI * 2); g.fill();
+    g.fillStyle = lensHex; g.beginPath(); g.arc(46, 28, 5, 0, Math.PI * 2); g.fill();
+    return iconCache[key] = c.toDataURL('image/png');
+  }
+  function uvIcon(bodyHex, accentHex) {
+    var key = 'uv:' + bodyHex + ':' + accentHex;
+    if (iconCache[key]) return iconCache[key];
+    var c = document.createElement('canvas'); c.width = c.height = 56;
+    var g = c.getContext('2d');
+    g.fillStyle = bodyHex; roundRect(g, 8, 24, 30, 10, 3); g.fill();
+    g.save(); g.translate(15, 33); g.rotate(0.35);
+    g.fillStyle = '#101014'; roundRect(g, -4, 0, 8, 16, 2); g.fill();
+    g.restore();
+    var grad = g.createRadialGradient(10, 29, 1, 10, 29, 11);
+    grad.addColorStop(0, accentHex); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad; g.beginPath(); g.arc(10, 29, 11, 0, Math.PI * 2); g.fill();
+    g.fillStyle = accentHex; g.fillRect(20, 25, 15, 2);
+    return iconCache[key] = c.toDataURL('image/png');
+  }
   function uvOwned(id) {
     if (id === 'default') return true;
     return !!(global.Progress && Progress.isCompleteSync('shop_uv_' + id));
@@ -68,6 +111,8 @@
     var cur = currentUvSkinId();
     UV_SKINS.forEach(function (s) {
       var row = document.createElement('div'); row.className = 'shopitem';
+      var img = document.createElement('img'); img.className = 'preview';
+      img.src = uvIcon(s.body, s.accent);
       var n = document.createElement('div'); n.className = 'n';
       n.textContent = s.name + (s.price ? ' — 🪙 ' + s.price : ' — бесплатно');
       var b = document.createElement('button'); b.className = 'k';
@@ -79,7 +124,7 @@
         if (!global.Coins || Coins.get() < s.price) b.setAttribute('disabled', 'true');
         b.onclick = function () { buyUv(s); };
       }
-      row.appendChild(n); row.appendChild(b);
+      row.appendChild(img); row.appendChild(n); row.appendChild(b);
       el.appendChild(row);
     });
   }
@@ -133,6 +178,8 @@
     '#inv-panel .shopitem{display:flex;align-items:center;gap:10px;padding:8px 0;' +
     'border-bottom:1px solid rgba(255,255,255,.08);}' +
     '#inv-panel .swatch{width:20px;height:20px;border-radius:50%;border:1px solid rgba(255,255,255,.3);flex:0 0 auto;}' +
+    '#inv-panel .preview{width:44px;height:44px;flex:0 0 auto;border-radius:6px;' +
+    'background:#0a0a0e;border:1px solid rgba(255,255,255,.12);}' +
     '#inv-panel .shopitem .n{flex:1;font-size:12px;}' +
     '#inv-panel .k{background:#14141c;border:1px solid rgba(255,255,255,.22);color:#ded7c8;' +
     'padding:6px 12px;font-family:inherit;font-size:11px;letter-spacing:1px;cursor:pointer;min-width:96px;text-align:center;}' +
@@ -192,8 +239,8 @@
     var cur = currentSkinId();
     SKINS.forEach(function (s) {
       var row = document.createElement('div'); row.className = 'shopitem';
-      var sw = document.createElement('div'); sw.className = 'swatch';
-      sw.style.background = '#' + s.lens.toString(16).padStart(6, '0');
+      var img = document.createElement('img'); img.className = 'preview';
+      img.src = flashlightIcon('#' + s.lens.toString(16).padStart(6, '0'));
       var n = document.createElement('div'); n.className = 'n';
       n.textContent = s.name + (s.price ? ' — 🪙 ' + s.price : ' — бесплатно');
       var b = document.createElement('button'); b.className = 'k';
@@ -205,7 +252,7 @@
         if (!global.Coins || Coins.get() < s.price) b.setAttribute('disabled', 'true');
         b.onclick = function () { buy(s); };
       }
-      row.appendChild(sw); row.appendChild(n); row.appendChild(b);
+      row.appendChild(img); row.appendChild(n); row.appendChild(b);
       el.appendChild(row);
     });
   }

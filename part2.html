@@ -282,7 +282,9 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 <script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
 <script src="js/profile.js"></script>
 <script src="js/progress.js"></script>
+<script src="js/coins.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/inventory.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
@@ -4476,19 +4478,33 @@ var UV={
 var OPEN_TIME=1.15;    // столько держать, чтобы раскрылся
 var _uvBoltTmp=new THREE.Vector3();   // переиспользуемый вектор для молний скина "Терминатор"
 
-// Скин "ТЕРМИНАТОР" (js/inventory.js, магазин, 50 монет) — тот же
-// пистолет, но корпус хромированный вместо матово-чёрного, плюс
-// красное кольцо-акцент и электрические дуги молний между лепестками
-// и линзой, которые оживают при зарядке/выстреле (updateUV).
-var UV_SKIN=(function(){try{return localStorage.getItem('magazin_uv_skin')==='terminator';}catch(e){return false;}})();
+// Скины УФ-пистолета (js/inventory.js, магазин):
+// - "ТЕРМИНАТОР" (50 монет) — хромированный корпус, красное кольцо-акцент,
+//   электрические дуги молний между лепестками и линзой.
+// - "UV ELITE" (60 монет) — тёмно-фиолетовый корпус, табличка с
+//   названием, боковые LED-полоски и голограмма (кольцо + волна)
+//   вместо молний. Оба скина оживают при зарядке/выстреле (updateUV).
+var UV_SKIN=(function(){try{return localStorage.getItem('magazin_uv_skin')||'default';}catch(e){return 'default';}})();
+
+function makeUvPlaqueTexture(){
+  var c=document.createElement('canvas');c.width=128;c.height=32;
+  var g=c.getContext('2d');
+  g.fillStyle='#0e0a14';g.fillRect(0,0,128,32);
+  g.strokeStyle='#c86bff';g.lineWidth=2;g.strokeRect(1,1,126,30);
+  g.fillStyle='#e8d8ff';g.font='bold 16px Arial';g.textAlign='center';g.textBaseline='middle';
+  g.fillText('UV ELITE',64,17);
+  var t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;
+  return t;
+}
 
 function makeUVGun(){
   var g=new THREE.Group();
-  var black=UV_SKIN?
-    new THREE.MeshStandardMaterial({color:0x8a8f9a,roughness:0.18,metalness:0.95}):
+  var isTerm=UV_SKIN==='terminator', isElite=UV_SKIN==='uvelite';
+  var black=isTerm?new THREE.MeshStandardMaterial({color:0x8a8f9a,roughness:0.18,metalness:0.95}):
+    isElite?new THREE.MeshStandardMaterial({color:0x18121f,roughness:0.3,metalness:0.6}):
     new THREE.MeshStandardMaterial({color:0x141416,roughness:0.42,metalness:0.72});
-  var grip=UV_SKIN?
-    new THREE.MeshStandardMaterial({color:0x1a1a1e,roughness:0.6,metalness:0.4}):
+  var grip=isTerm?new THREE.MeshStandardMaterial({color:0x1a1a1e,roughness:0.6,metalness:0.4}):
+    isElite?new THREE.MeshStandardMaterial({color:0x120e18,roughness:0.55,metalness:0.35}):
     new THREE.MeshStandardMaterial({color:0x0e0e10,roughness:0.9,metalness:0.15});
   // рукоять
   var h=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.20,0.11),grip);
@@ -4502,7 +4518,7 @@ function makeUVGun(){
   // спусковой крючок
   var tr=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.06,0.02),black);
   tr.position.set(0,-0.06,0.02);g.add(tr);
-  if(UV_SKIN){
+  if(isTerm){
     // красное кольцо-акцент — собранный, "терминаторский" силуэт даже
     // когда пистолет не заряжен
     var accent=new THREE.Mesh(new THREE.TorusGeometry(0.053,0.006,6,16),
@@ -4510,15 +4526,29 @@ function makeUVGun(){
         emissiveIntensity:1.1,roughness:0.3,metalness:0.6}));
     accent.rotation.x=Math.PI/2;accent.position.z=-0.06;g.add(accent);
   }
+  if(isElite){
+    // табличка с названием + боковые LED-полоски — тоже видны всегда,
+    // не только при выстреле
+    var plaque=new THREE.Mesh(new THREE.PlaneGeometry(0.09,0.022),
+      new THREE.MeshBasicMaterial({map:makeUvPlaqueTexture()}));
+    plaque.position.set(0,0.018,0.02);plaque.rotation.x=-Math.PI/2;g.add(plaque);
+    var ledMat=new THREE.MeshStandardMaterial({color:0xc86bff,emissive:0x8a2fd9,emissiveIntensity:1.2});
+    for(var li=0;li<3;li++){
+      var led=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.006,0.05),ledMat);
+      led.position.set(-0.028+li*0.028,-0.005,0.14);g.add(led);
+    }
+  }
   // ЗОНТ: пять лепестков, на каждом своя лампа
   UV.petals=[];UV.bulbs=[];
+  var bulbColor=isElite?0xd8b0ff:0xbfa8ff, bulbEmissive=isElite?0xc86bff:0x7a4aff;
+  UV.bulbLitColor=bulbColor;
   for(var i=0;i<5;i++){
     var a=i/5*Math.PI*2;
     var pet=new THREE.Group();
     var blade=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.012,0.20),black);
     blade.position.z=-0.10;pet.add(blade);
     var bulb=new THREE.Mesh(new THREE.SphereGeometry(0.026,8,7),
-      new THREE.MeshStandardMaterial({color:0xbfa8ff,emissive:0x7a4aff,
+      new THREE.MeshStandardMaterial({color:bulbColor,emissive:bulbEmissive,
         emissiveIntensity:0.5,roughness:0.25}));
     bulb.position.z=-0.20;pet.add(bulb);
     pet.position.set(Math.cos(a)*0.022,Math.sin(a)*0.022,-0.17);
@@ -4526,10 +4556,11 @@ function makeUVGun(){
     g.add(pet);UV.petals.push(pet);UV.bulbs.push(bulb);
   }
   // центральная линза
+  var lensColor=isElite?0xc86bff:0x9a7aff, lensEmissive=isElite?0xb04fff:0x6a3aff;
   var lens=new THREE.Mesh(new THREE.CircleGeometry(0.040,16),
-    new THREE.MeshStandardMaterial({color:0x9a7aff,emissive:0x6a3aff,emissiveIntensity:0.8}));
+    new THREE.MeshStandardMaterial({color:lensColor,emissive:lensEmissive,emissiveIntensity:0.8}));
   lens.position.z=-0.19;g.add(lens);g.userData.lens=lens;
-  if(UV_SKIN){
+  if(isTerm){
     // дуги молний: ломаная линия от каждого лепестка к линзе, форма
     // трясётся каждый кадр в updateUV() — дешёвая, но убедительная
     // электрическая дуга без единого внешнего ассета.
@@ -4543,6 +4574,20 @@ function makeUVGun(){
       line.frustumCulled=false;
       g.add(line);UV.bolts.push(line);
     });
+  }
+  if(isElite){
+    // голограмма над пистолетом: кольцо, которое крутится и раздувается,
+    // плюс волна-осциллограф рядом — оба оживают в updateUV(), как
+    // молнии у "Терминатора", просто другой рисунок эффекта.
+    UV.holoRing=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.004,8,24),
+      new THREE.MeshBasicMaterial({color:0xc86bff,transparent:true,opacity:0,
+        blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
+    UV.holoRing.position.set(0,0.09,-0.10);g.add(UV.holoRing);
+    var waveGeo=new THREE.BufferGeometry();
+    waveGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(9*3),3));
+    UV.holoWave=new THREE.Line(waveGeo,new THREE.LineBasicMaterial({color:0xe8d0ff,
+      transparent:true,opacity:0,blending:THREE.AdditiveBlending}));
+    UV.holoWave.frustumCulled=false;g.add(UV.holoWave);
   }
   g.position.set(0.30,-0.30,-0.52);
   g.rotation.set(0.04,-0.10,0.0);
@@ -4639,7 +4684,7 @@ function updateUV(dt){
     var lit=(i<UV.loaded);
     var glow=lit?(0.5+UV.open*5.5+(UV.state==='fire'?14:0)):0.02;
     UV.bulbs[i].material.emissiveIntensity=glow;
-    UV.bulbs[i].material.color.setHex(lit?0xbfa8ff:0x3a3540);
+    UV.bulbs[i].material.color.setHex(lit?(UV.bulbLitColor||0xbfa8ff):0x3a3540);
   });
   if(UV.view.userData.lens)
     UV.view.userData.lens.material.emissiveIntensity=0.8+UV.open*3+(UV.state==='fire'?18:0);
@@ -4669,6 +4714,31 @@ function updateUV(dt){
       line.geometry.attributes.position.needsUpdate=true;
       line.material.opacity=Math.min(1,(firing?0.9:0.35+UV.open*0.35)*(0.7+Math.random()*0.3));
     });
+  }
+
+  // голограмма скина "UV ELITE": кольцо крутится и раздувается,
+  // волна рядом дрожит — та же логика активности, что у молний,
+  // просто другой рисунок эффекта.
+  if(UV.holoRing&&UV.holoWave){
+    var eFiring=(UV.state==='fire');
+    var eActive=UV.open>0.15||eFiring;
+    if(!eActive){
+      UV.holoRing.material.opacity=0;UV.holoWave.material.opacity=0;
+    }else{
+      UV.holoRing.rotation.z+=dt*(eFiring?9:3);
+      var ringScale=1+Math.sin(performance.now()*0.006)*0.08+(eFiring?0.3:0);
+      UV.holoRing.scale.setScalar(ringScale);
+      UV.holoRing.material.opacity=Math.min(1,(eFiring?0.9:0.4+UV.open*0.4));
+      var wpos=UV.holoWave.geometry.attributes.position.array;
+      var amp2=(eFiring?0.05:0.02)*(0.4+UV.open*0.6);
+      for(var wk=0;wk<9;wk++){
+        wpos[wk*3]  =0.03+wk*0.012;
+        wpos[wk*3+1]=0.09+(wk%2?1:-1)*amp2*(0.5+Math.random()*0.5);
+        wpos[wk*3+2]=-0.10;
+      }
+      UV.holoWave.geometry.attributes.position.needsUpdate=true;
+      UV.holoWave.material.opacity=Math.min(1,(eFiring?0.9:0.35+UV.open*0.35)*(0.7+Math.random()*0.3));
+    }
   }
 
   // свет от пистолета: слабый при раскрытии, мощный в момент выстрела
