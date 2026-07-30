@@ -337,6 +337,23 @@ function blotch(g,s,n,col,rmin,rmax){
   }
 }
 var TEX={};
+// След — decal с прозрачным фоном (в отличие от остальных текстур
+// здесь НЕТ заливки s#ffffff первым шагом), неправильная форма пятна
+// вместо плоского прямоугольника. Используется там, где что-то
+// произошло на конкретном месте (см. VISUALSTYLE.md).
+TEX.stain=makeTex(function(g,s){
+  var cx=s*0.5, cy=s*0.5;
+  var n=4+Math.floor(Math.random()*3);
+  for(var i=0;i<n;i++){
+    var x=cx+(Math.random()-0.5)*s*0.55, y=cy+(Math.random()-0.5)*s*0.55;
+    var r=s*(0.10+Math.random()*0.20);
+    var grd=g.createRadialGradient(x,y,0,x,y,r);
+    grd.addColorStop(0,'rgba(58,6,6,0.88)');
+    grd.addColorStop(0.55,'rgba(58,6,6,0.42)');
+    grd.addColorStop(1,'rgba(58,6,6,0)');
+    g.fillStyle=grd;g.beginPath();g.arc(x,y,r,0,6.283);g.fill();
+  }
+},1);
 // Штукатурка магазина — грязная, с потёками и трещинами
 TEX.plaster=makeTex(function(g,s){
   g.fillStyle='#ffffff';g.fillRect(0,0,s,s);
@@ -486,6 +503,16 @@ skin(MATS.sofaArm,TEX.fabric,0.03);
 skin(MATS.bedMatt,TEX.mattress,0.03);
 skin(MATS.bedPillow,TEX.mattress,0.025);
 skin(MATS.door,TEX.wood,0.04);
+// След на месте, где что-то произошло — decal поверх матраса,
+// а не закрашенный прямоугольник. bloodMat раньше был объявлен,
+// но нигде не использовался — теперь пригодился.
+MATS.bloodMat.map=TEX.stain;
+MATS.bloodMat.transparent=true;
+MATS.bloodMat.depthWrite=false;          // decal не должен спорить с матрасом за глубину
+MATS.bloodMat.polygonOffset=true;
+MATS.bloodMat.polygonOffsetFactor=-1;
+MATS.bloodMat.roughness=0.55;
+MATS.bloodMat.needsUpdate=true;
 // Из тех же картинок считаются нормал-карты: свет начинает ложиться
 // на обвалившуюся штукатурку, на волокно доски и на ткань дивана.
 if(window.DETAIL)DETAIL.upgradeMaterials(MATS);
@@ -799,9 +826,12 @@ function buildBed(cx,cz){
   }
   // Pillow
   box(0.38,0.08,0.28,MATS.bedPillow,cx-0.2,0.47,cz-0.26);
-  // Blood stain
-  var bm3=new THREE.MeshStandardMaterial({color:0x6a0000,roughness:0.9,opacity:0.7,transparent:true});
-  box(0.25,0.01,0.18,bm3,cx+0.12,0.43,cz+0.12);
+  // След на матрасе — неправильная форма пятна, не плоский прямоугольник
+  var stainMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.4),MATS.bloodMat);
+  stainMesh.rotation.x=-Math.PI/2;stainMesh.rotation.z=Math.random()*6.283;
+  stainMesh.position.set(cx+0.12,0.435,cz+0.12);
+  addObj(stainMesh);
+  stainMesh.castShadow=false;   // decal тоньше листа бумаги — своей тени не бросает
   // Headboard
   box(0.88,0.55,0.08,MATS.bedHead,cx,0.63,cz-0.44);
   // Headboard bars
