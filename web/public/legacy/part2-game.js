@@ -1,3 +1,4 @@
+
 // Профиль заводится тихо, без формы ника и пароля — она осталась
 // на index.html. Как только известно, онлайн игрок или нет,
 // подтягиваем сохранение (слот 2) и обновляем кнопку "ПРОДОЛЖИТЬ".
@@ -873,7 +874,7 @@ function updateCorridor(dt){
   var dmg=document.getElementById('dmg');
   if(dmg)dmg.style.opacity=gap<4?Math.min(0.85,(4-gap)/3.4).toFixed(2):'0';
   // догнал
-  if(CH.bossZ<=P.z+0.85){
+  if(CH.bossZ<=P.z+0.85&&!(window.ADMIN&&ADMIN.god)){
     CH.on=false;
     dead=true;
     document.getElementById('dmg').style.opacity='1';
@@ -1612,6 +1613,7 @@ function updateVent(dt){
   VT.t+=dt;
   // паук перебирает лапами
   if(VT.spider&&!VT.dead){
+    if(window.ADMIN)VT.spider.scale.setScalar(ADMIN.mobScale());
     VT.spider.userData.legs.forEach(function(l){
       l.o.rotation.x=Math.sin(VT.t*7+l.ph)*0.35;
     });
@@ -1999,6 +2001,7 @@ function updateWarehouse(dt){
 }
 
 function whCaught(){
+  if(window.ADMIN&&ADMIN.god)return;
   WH.caught=true;dead=true;
   SearchMusic.stop();
   document.getElementById('dmg').style.opacity='1';
@@ -2391,6 +2394,7 @@ function updateHall(dt){
   hallNear();
 }
 function hallCaught(){
+  if(window.ADMIN&&ADMIN.god)return;
   HL.caught=true;dead=true;
   document.getElementById('dmg').style.opacity='1';
   sndScare();Music.outro();
@@ -2881,6 +2885,7 @@ function initTorch(){
   FL2.light.position.set(0,0,0);
   FL2.light.target.position.set(0,0,-1);
   camera.add(FL2.light.target);
+  if(window.DETAIL)DETAIL.setupFlashlightShadow(FL2.light);
   FL2.view=makeProTorch();
   camera.add(FL2.view);
 }
@@ -3226,6 +3231,7 @@ function updateRide(dt){
   camera.position.y+=(Math.random()-0.5)*s;
 
   if(!RC.win&&t>2.6&&!RC.done){
+    if(window.ADMIN&&ADMIN.god){RC.done=true;RC.on=false;unstick();dead=false;return;}
     RC.done=true;RC.on=false;
     sndScare();
     document.getElementById('dmg').style.opacity='1';
@@ -4215,6 +4221,7 @@ function initUV(){
   UV.lamp=new THREE.SpotLight(0x8a5cff,0,22,Math.PI/4.4,0.55,1.1);
   camera.add(UV.lamp);UV.lamp.position.set(0,0,0);
   UV.lamp.target.position.set(0,0,-1);camera.add(UV.lamp.target);
+  if(window.DETAIL)DETAIL.setupFlashlightShadow(UV.lamp);
 }
 
 // ---------- удержание кнопки ----------
@@ -4769,15 +4776,17 @@ function updateHunt(dt){
   if(!blocked(HN.mx,nz,0.5))HN.mz=nz;
   HN.mob.position.set(HN.mx,0,HN.mz);
   HN.mob.rotation.y=Math.atan2(tdx,tdz);
+  if(window.ADMIN)HN.mob.scale.setScalar(ADMIN.mobScale());
   var e=HN.alert>=1?7:(HN.alert>=0.45?3.5:1.2);
   HN.mob.children.forEach(function(c){
     if(c.material&&c.material.emissiveIntensity!==undefined)c.material.emissiveIntensity=e;
   });
   var dmg=document.getElementById('dmg');
   if(dmg)dmg.style.opacity=HN.alert>0.4?Math.min(0.8,(HN.alert-0.4)*0.9).toFixed(2):'0';
-  if(d<0.95&&HN.alert>=1.0)huntCaught();
+  if(d<0.95*(window.ADMIN?ADMIN.mobScale():1)&&HN.alert>=1.0)huntCaught();
 }
 function huntCaught(){
+  if(window.ADMIN&&ADMIN.god)return;
   HN.armed=false;dead=true;US.on=false;
   document.getElementById('dmg').style.opacity='1';
   sndScare();
@@ -7666,14 +7675,16 @@ function update(ts){
   var cr=mCrouch||K['ControlLeft']||K['ControlRight'];
   var fwd=(K['KeyW']?1:0)-(K['KeyS']?1:0)+(-jmy);
   var str=(K['KeyD']?1:0)-(K['KeyA']?1:0)+(jmx);
-  var spd=(run?0.098:0.058)*(cr?0.52:1)*dt*60;
+  var spd=(run?0.098:0.058)*(cr?0.52:1)*dt*60*(window.ADMIN?ADMIN.speedMul():1);
 
   var dirFX=-Math.sin(P.yaw),dirFZ=-Math.cos(P.yaw);
   var dirRX=Math.cos(P.yaw), dirRZ=-Math.sin(P.yaw);
   var moved=false;
   var eyeH=cr?CROUCH_H:EYE_H;
+  var NC=!!(window.ADMIN&&ADMIN.noclip);
 
   function tryMove(nx,nz){
+    if(NC)return true;
     if(PHASE==='corridor'){
       if(Math.abs(nx)>CW/2-0.32)return false;
       if(nz>4.2||nz<-CL+4)return false;
@@ -7701,13 +7712,20 @@ function update(ts){
     moved=true;
   }
   // прыжок
-  if((mJump||K['Space'])&&P.onGround){P.vy=JUMP_V;P.onGround=false;}
+  if(NC){
+    // Админ-панель: полёт вместо прыжка — Space вверх, Ctrl вниз, без гравитации.
+    var flyUp=(mJump||K['Space'])?1:0, flyDown=cr?1:0;
+    P.y+=(flyUp-flyDown)*0.14*dt*60;
+    P.vy=0;P.onGround=true;
+  } else {
+    if((mJump||K['Space'])&&P.onGround){P.vy=JUMP_V*(window.ADMIN?ADMIN.jumpMul():1);P.onGround=false;}
+    P.vy-=0.0052*dt*60;
+    P.y+=P.vy*dt*60;
+    // Пол может быть ниже нуля — в доме игрушек мы спускаемся в ямы
+    var fy=(P.floorY===undefined)?0:P.floorY;
+    if(P.y<=fy){P.y=fy;P.vy=0;P.onGround=true;}
+  }
   mJump=false;
-  P.vy-=0.0052*dt*60;
-  P.y+=P.vy*dt*60;
-  // Пол может быть ниже нуля — в доме игрушек мы спускаемся в ямы
-  var fy=(P.floorY===undefined)?0:P.floorY;
-  if(P.y<=fy){P.y=fy;P.vy=0;P.onGround=true;}
 
   // шаги
   if(moved&&P.onGround){
@@ -7733,7 +7751,9 @@ function applyCamera(moved,run){
 function loop(ts){
   update(ts);
   updateLights();
-  if(window.DETAIL)DETAIL.tick(ts,P.x,P.y,P.z);   // пыль, зерно, автокачество
+  // Размытие в движении при спринте — тот же приём, что и в первой части.
+  var blurT=(!dead&&(mRun||K['ShiftLeft']||K['ShiftRight']))?0.5:0;
+  if(window.DETAIL)DETAIL.tick(ts,P.x,P.y,P.z,blurT);   // пыль, зерно, автокачество, размытие
   if(window.CONTROLS)CONTROLS.tickPad(P,K,0.016);  // геймпад
   // Флаг для авто-обновления: пока идёт игра, страницу не перезагружаем
   // молча — вместо этого внизу появится полоска «ОБНОВИТЬ».

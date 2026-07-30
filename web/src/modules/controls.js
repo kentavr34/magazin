@@ -278,6 +278,16 @@
       box.appendChild(shopRow);
     }
 
+    if (global.ADMIN && ADMIN.isUnlocked()) {
+      var admRow = document.createElement('div'); admRow.className = 'row';
+      admRow.innerHTML = '<div class="n">Админ-панель</div>';
+      var admBtn = document.createElement('button'); admBtn.className = 'k';
+      admBtn.textContent = 'ОТКРЫТЬ'; admBtn.style.minWidth = '110px';
+      admBtn.onclick = function () { C.closeSettings(); ADMIN.open(); };
+      admRow.appendChild(admBtn);
+      box.appendChild(admRow);
+    }
+
     if (typeof global.jumpToFloor === 'function' && global.Progress) {
       var maxFloor = Progress.getValueSync('p1_maxfloor') || 1;
       var chRow = document.createElement('div'); chRow.className = 'row';

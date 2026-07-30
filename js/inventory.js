@@ -9,6 +9,13 @@
    без влияния на баланс (см. VISUALSTYLE.md, правило 5, и решение
    по Этапу 7, пункт 5): никакого оружия, брони или ускорения.
 
+   Единственное осознанное исключение — админ-панель (js/admin.js):
+   разовая дорогая покупка за 10000 монет, которая как раз ВЛИЯЕТ
+   на баланс (бессмертие, ноклип, скорость и т.п.). Игрок явно
+   выбирает читерский режим по собственному желанию — это не
+   нарушение правила "только косметика", а отдельная, отдельно
+   обозначенная категория.
+
    Владение купленным — через Progress (булев флаг, который только
    растёт: купил — значит владеешь навсегда, это ровно тот случай,
    для которого Progress и сделан). Выбранный сейчас скин — просто
@@ -106,6 +113,7 @@
       '<h3>МАГАЗИН — ЦВЕТ ЛУЧА ФОНАРИКА</h3><div id="inv-shop"></div>' +
       '<div class="row" style="font-size:10px;color:#5a5560;margin-top:10px;">' +
       'Только внешний вид — на игру и сложность не влияет.</div>' +
+      '<h3>МАГАЗИН — СПЕЦВОЗМОЖНОСТИ</h3><div id="inv-admin"></div>' +
       '<button class="btn" id="inv-close">ЗАКРЫТЬ</button></div>';
     document.body.appendChild(panel);
     panel.querySelector('#inv-close').onclick = Inv.close;
@@ -163,11 +171,35 @@
     wear(s.id);
   }
 
+  /* Разовая дорогая покупка — не скин, отдельная кнопка "владею/купить".
+     Рендерится, только если модуль js/admin.js подключён на этой странице. */
+  function renderAdmin() {
+    var el = panel.querySelector('#inv-admin');
+    if (!el) return;
+    if (!global.ADMIN) { el.innerHTML = ''; return; }
+    el.innerHTML = '';
+    var row = document.createElement('div'); row.className = 'shopitem';
+    var n = document.createElement('div'); n.className = 'n';
+    var unlocked = ADMIN.isUnlocked();
+    n.textContent = 'Админ-панель (бессмертие, ноклип и др.)' + (unlocked ? '' : ' — 🪙 ' + ADMIN.price);
+    var b = document.createElement('button'); b.className = 'k';
+    if (unlocked) {
+      b.textContent = 'ОТКРЫТЬ'; b.onclick = function () { Inv.close(); ADMIN.open(); };
+    } else {
+      b.textContent = 'КУПИТЬ';
+      if (!global.Coins || Coins.get() < ADMIN.price) b.setAttribute('disabled', 'true');
+      b.onclick = function () { if (ADMIN.buy()) renderAdmin(); };
+    }
+    row.appendChild(n); row.appendChild(b);
+    el.appendChild(row);
+  }
+
   function renderAll() {
     build();
     panel.querySelector('#inv-coins').textContent = '🪙 ' + (global.Coins ? Coins.get() : 0);
     renderKeys();
     renderShop();
+    renderAdmin();
   }
 
   Inv.open = function () { build(); renderAll(); panel.classList.add('on'); };

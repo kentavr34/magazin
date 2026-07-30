@@ -230,6 +230,7 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
 <script src="js/profile.js"></script>
 <script src="js/progress.js"></script>
 <script src="js/coins.js"></script>
+<script src="js/admin.js"></script>
 <script src="js/inventory.js"></script>
 <script src="js/mapview.js"></script>
 <script src="js/controls.js"></script>
@@ -637,7 +638,7 @@ MAPS[4]=[
 ];
 var currentMap=MAPS[1];
 function getCell(x,z){var mx=Math.floor(x),mz=Math.floor(z);if(mx<0||mz<0||mx>19||mz>19)return 1;return currentMap[mz][mx];}
-function isWalkable(x,z){var v=getCell(x,z);return v===0||v===2||v===9||v===14;}
+function isWalkable(x,z){if(window.ADMIN&&ADMIN.noclip)return true;var v=getCell(x,z);return v===0||v===2||v===9||v===14;}
 // Стена, диван или кровать перекрывают обзор — то же самое, что уже
 // блокирует движение (isWalkable), только для взгляда, а не для ног.
 // Без этой проверки укрытия на карте (диваны расставлены рядами
@@ -1090,6 +1091,7 @@ function updateEntities(dt){
     var mesh=entityMeshes[i];
     if(mesh){
       mesh.position.set(e.x,1.1,e.z);
+      if(window.ADMIN)mesh.scale.setScalar(ADMIN.mobScale());
       mesh.visible=!e.hidden||(d<4);
       // Billboard — always face player
       mesh.rotation.y=Math.atan2(P.x-e.x,P.z-e.z);
@@ -1112,7 +1114,7 @@ function updateEntities(dt){
       var nx=e.x+dx/nd*e.spd,nz=e.z+dz/nd*e.spd;
       if(isWalkable(nx,e.z))e.x=nx;
       if(isWalkable(e.x,nz))e.z=nz;
-      if(d<0.7){P.hp=Math.max(0,P.hp-1.5);updateHP();if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
+      if(d<0.7*(window.ADMIN?ADMIN.mobScale():1)&&!(window.ADMIN&&ADMIN.god)){P.hp=Math.max(0,P.hp-1.5);updateHP();if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
       if(d<5)anyChase=true;
       e.sayT--;if(e.sayT<=0&&Math.random()<0.009){e.sayT=260+Math.floor(Math.random()*180);sayE(e.phrases[Math.floor(Math.random()*e.phrases.length)]);}
     } else {e.x+=Math.cos(Date.now()*0.0003+i)*0.005;e.z+=Math.sin(Date.now()*0.0002+i)*0.005;}
@@ -2024,7 +2026,7 @@ function setPrompt(txt,show){document.getElementById('prompt').textContent=txt;d
 // ============================================================
 //  TRAP
 // ============================================================
-function trapHit(){if(P.trapped)return;P.trapped=true;P.trapT=220;P.trapCD=240;P.hp=Math.max(0,P.hp-20);updateHP();flash(0.55,650);showWarn('⚠ КАПКАН!');sndTrap();showMsg('Капкан. Двигайся чтобы выбраться.',3200);say('Капкан. Больно.',0.8,0.52);if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
+function trapHit(){if(P.trapped)return;if(window.ADMIN&&ADMIN.god)return;P.trapped=true;P.trapT=220;P.trapCD=240;P.hp=Math.max(0,P.hp-20);updateHP();flash(0.55,650);showWarn('⚠ КАПКАН!');sndTrap();showMsg('Капкан. Двигайся чтобы выбраться.',3200);say('Капкан. Больно.',0.8,0.52);if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
 
 // ============================================================
 //  ACTIONS
@@ -2341,7 +2343,7 @@ function winGame(){
 
 function showEndScreen(title,sub){document.getElementById('endtitle').textContent=title;document.getElementById('endsub').textContent=sub;document.getElementById('endscreen').style.display='flex';}
 function die(title,sub){
-  if(dead)return;dead=true;stopChaseMusic();   // тему босса не глушим — она играет дальше
+  if(dead)return;if(window.ADMIN&&ADMIN.god)return;dead=true;stopChaseMusic();   // тему босса не глушим — она играет дальше
   ['boss-hpbar','bshoot','weapon-ui','blue-cube-ui'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   say('Нет...',0.7,0.45);setTimeout(function(){showEndScreen(title||'ВЫ ПОГИБЛИ',sub||'');},800);
 }
@@ -2408,27 +2410,35 @@ function update(ts){
   // Торможение чуть резче разгона — так теряет опору, а не скользит по льду.
   var rampTarget=movingNow?1:0;
   P.moveRamp+=(rampTarget-P.moveRamp)*(rampTarget>P.moveRamp?0.16:0.26);
-  var spd=(P.trapped?0.04:(run?0.09:0.055))*(cr?0.5:1)*dt*60*P.moveRamp;
+  var NC=!!(window.ADMIN&&ADMIN.noclip);
+  var spd=(P.trapped?0.04:(run?0.09:0.055))*(cr?0.5:1)*dt*60*P.moveRamp*(window.ADMIN?ADMIN.speedMul():1);
 
   // Jump & crouch
   var targetEyeH = cr ? CROUCH_H : EYE_H;
-  var jumpPower=JUMP_V;
-  if((mJump||K['Space'])&&P.onGround&&!P.jump){
+  var jumpPower=JUMP_V*(window.ADMIN?ADMIN.jumpMul():1);
+  if(NC){
+    // Админ-панель: полёт вместо прыжка — Space вверх, Ctrl вниз, без гравитации.
+    var flyUp=(mJump||K['Space'])?1:0, flyDown=cr?1:0;
+    P.currentH=Math.max(0.3,Math.min(8,(P.currentH||EYE_H)+(flyUp-flyDown)*0.12*dt*60));
+    P.vy=0; P.onGround=true; P.jump=false;
+  } else if((mJump||K['Space'])&&P.onGround&&!P.jump){
     P.vy=jumpPower; P.jump=true; P.onGround=false;
   }
   mJump=false;
-  if(!P.onGround){
-    P.vy -= 0.004;  // gravity
-    P.currentH = (P.currentH||EYE_H) + P.vy;
-    if(P.currentH <= targetEyeH){
-      P.currentH = targetEyeH;
-      P.vy=0; P.onGround=true; P.jump=false;
+  if(!NC){
+    if(!P.onGround){
+      P.vy -= 0.004;  // gravity
+      P.currentH = (P.currentH||EYE_H) + P.vy;
+      if(P.currentH <= targetEyeH){
+        P.currentH = targetEyeH;
+        P.vy=0; P.onGround=true; P.jump=false;
+      }
+      if(P.currentH > EYE_H+0.55) P.currentH = EYE_H+0.55;
+    } else {
+      // Smooth crouch transition
+      P.currentH = P.currentH||EYE_H;
+      P.currentH += (targetEyeH - P.currentH) * 0.18;
     }
-    if(P.currentH > EYE_H+0.55) P.currentH = EYE_H+0.55;
-  } else {
-    // Smooth crouch transition
-    P.currentH = P.currentH||EYE_H;
-    P.currentH += (targetEyeH - P.currentH) * 0.18;
   }
   var camY = P.currentH;
 
@@ -2455,14 +2465,14 @@ function update(ts){
 
   if(Math.abs(fwd)>0.03){
     var nx=P.x+dirFX*fwd*spd, nz=P.z+dirFZ*fwd*spd;
-    if(isWalkable(nx,P.z)&&getCell(Math.floor(nx),Math.floor(P.z))!==5&&getCell(Math.floor(nx),Math.floor(P.z))!==6)P.x=nx;
-    if(isWalkable(P.x,nz)&&getCell(Math.floor(P.x),Math.floor(nz))!==5&&getCell(Math.floor(P.x),Math.floor(nz))!==6)P.z=nz;
+    if(NC||(isWalkable(nx,P.z)&&getCell(Math.floor(nx),Math.floor(P.z))!==5&&getCell(Math.floor(nx),Math.floor(P.z))!==6))P.x=nx;
+    if(NC||(isWalkable(P.x,nz)&&getCell(Math.floor(P.x),Math.floor(nz))!==5&&getCell(Math.floor(P.x),Math.floor(nz))!==6))P.z=nz;
     moved=true;
   }
   if(Math.abs(str)>0.03){
     var nx2=P.x+dirRX*str*spd, nz2=P.z+dirRZ*str*spd;
-    if(isWalkable(nx2,P.z)&&getCell(Math.floor(nx2),Math.floor(P.z))!==5&&getCell(Math.floor(nx2),Math.floor(P.z))!==6)P.x=nx2;
-    if(isWalkable(P.x,nz2)&&getCell(Math.floor(P.x),Math.floor(nz2))!==5&&getCell(Math.floor(P.x),Math.floor(nz2))!==6)P.z=nz2;
+    if(NC||(isWalkable(nx2,P.z)&&getCell(Math.floor(nx2),Math.floor(P.z))!==5&&getCell(Math.floor(nx2),Math.floor(P.z))!==6))P.x=nx2;
+    if(NC||(isWalkable(P.x,nz2)&&getCell(Math.floor(P.x),Math.floor(nz2))!==5&&getCell(Math.floor(P.x),Math.floor(nz2))!==6))P.z=nz2;
     moved=true;
   }
 
