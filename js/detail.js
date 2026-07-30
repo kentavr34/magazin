@@ -421,8 +421,19 @@
     } catch (e) { }
   }
 
-  D.tick = function (nowMs, camX, camY, camZ) {
+  /* Лёгкое размытие в движении: резкий поворот или спринт на пару
+     кадров стряхивают идеальную резкость, как в кино, а не остаются
+     чёткими на любой скорости. Чистый CSS-фильтр на канвасе —
+     ни шейдеров, ни лишнего прохода рендера. */
+  var motionBlurCur = 0;
+
+  D.tick = function (nowMs, camX, camY, camZ, blurTarget) {
     try {
+      if (R && R.domElement) {
+        var bt = blurTarget || 0;
+        motionBlurCur += (bt - motionBlurCur) * (bt > motionBlurCur ? 0.35 : 0.18);
+        R.domElement.style.filter = motionBlurCur > 0.03 ? 'blur(' + motionBlurCur.toFixed(2) + 'px)' : '';
+      }
       /* пыль вокруг игрока + лёгкое броуновское движение */
       if (dust && dustGeo && Q().dust) {
         if (camX !== undefined) dust.position.set(camX, 0, camZ);

@@ -2810,7 +2810,12 @@ function loop(ts){
     updateCut(_d);
   } else { window.__ct=ts; update(ts); }
   updateDust(ts);
-  if(window.DETAIL)DETAIL.tick(ts,camera.position.x,camera.position.y,camera.position.z);
+  // Размытие в движении: резкий поворот (P.roll) или спринт на бегу —
+  // те же сигналы, что уже считает наклон камеры, лишней логики не нужно.
+  // Во время секретной концовки (CUT) P.roll не считается — гасим размытие,
+  // чтобы не застыло на случайном значении со момента её начала.
+  var blurT=CUT.on?0:Math.min(1.6, Math.abs(P.roll)*14 + (((mRun||K['ShiftLeft']||K['ShiftRight'])&&P.moveRamp>0.5)?0.5:0));
+  if(window.DETAIL)DETAIL.tick(ts,camera.position.x,camera.position.y,camera.position.z,blurT);
   if(window.CONTROLS)CONTROLS.tickPad(P,K,0.016);  // геймпад
   // Флаг для авто-обновления: пока идёт игра, страницу не перезагружаем
   // молча — вместо этого внизу появится полоска «ОБНОВИТЬ».
