@@ -143,6 +143,12 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 #uv-inspect-btn:hover{border-color:#c86bff;color:#e8d8ff;}
 #uv-inspect-btn.on{background:rgba(120,60,200,0.5);border-color:#c86bff;}
 #batwrap{display:none;position:fixed;left:16px;top:52px;z-index:30;pointer-events:none;}
+#fl2-inspect-btn{display:none;position:fixed;left:16px;top:80px;z-index:30;
+  font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.75);
+  border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:5px 9px;
+  background:rgba(20,20,20,0.5);cursor:pointer;user-select:none;}
+#fl2-inspect-btn:hover{border-color:#fff;color:#fff;}
+#fl2-inspect-btn.on{background:rgba(90,90,90,0.5);border-color:#fff;}
 #batlbl{font-size:9px;letter-spacing:3px;color:rgba(255,255,255,0.4);margin-bottom:3px;}
 #batbar{width:120px;height:8px;background:rgba(255,255,255,0.08);
   border:1px solid rgba(255,255,255,0.18);}
@@ -228,6 +234,7 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 <div id="uvhud"></div>
 <div id="uv-inspect-btn" onclick="uvInspectToggle()">👁 ОСМОТР</div>
 <div id="batwrap"><div id="batlbl">ЗАРЯД</div><div id="batbar"><div id="batfill"></div></div></div>
+<div id="fl2-inspect-btn" onclick="fl2InspectToggle()">👁 ОСМОТР</div>
 <div id="vibwrap">
   <div id="viblbl">ВИБРАЦИЯ ПОЛА</div>
   <div id="vibbar"><div id="vibfill"></div></div>
@@ -3158,7 +3165,8 @@ var OS={w:30,d:24,h:4.6,on:false,t:0,
 
 // ---------- фонарь: заряд и батарейки ----------
 var FL2={has:false,on:false,charge:1,drain:1/180,   // полного заряда хватает на 3 минуты
-         light:null,view:null,lens:null,beam:null};
+         light:null,view:null,lens:null,beam:null,
+         inspect:false,inspectT:0};
 
 function makeProTorch(){
   var g=new THREE.Group();
@@ -3200,15 +3208,45 @@ function initTorch(){
   camera.add(FL2.view);
 }
 function toggleTorch(){
-  if(!FL2.has)return;
+  if(!FL2.has||FL2.inspect)return;
   if(!FL2.on&&FL2.charge<=0){showMsg('Батарея села',1.8);return;}
   FL2.on=!FL2.on;
   sndBeep(FL2.on?900:400);
   if(FL2.on){FL2.shown=true;FL2.offT=0;}
   else FL2.offT=5.0;                    // ещё пять секунд в руках, потом убираем
 }
+// Осмотр фонарика: подъезжает в центр экрана, крутится, светит на
+// максимум — чисто показать купленный скин, на геймплей не влияет.
+function fl2InspectToggle(){
+  if(!FL2.has)return;
+  FL2.inspect=!FL2.inspect;
+  var btn=document.getElementById('fl2-inspect-btn');
+  if(btn)btn.classList.toggle('on',FL2.inspect);
+  if(FL2.inspect){
+    FL2.inspectT=0;FL2.shown=true;
+    if(window.UV&&UV.inspect)uvInspectToggle();   // осматриваем только один предмет за раз
+  }
+}
+
 function updateTorch(dt){
   if(!FL2.light)return;
+  var ibtn=document.getElementById('fl2-inspect-btn');
+  if(ibtn)ibtn.style.display=FL2.has?'block':'none';
+  if(FL2.inspect){
+    FL2.inspectT+=dt;
+    var it=Math.min(1,FL2.inspectT/0.5);
+    if(FL2.view){
+      FL2.view.visible=true;
+      FL2.view.position.set(-0.30+(0-(-0.30))*it,(FL2.y===undefined?-0.26:FL2.y)+(-0.05-(FL2.y===undefined?-0.26:FL2.y))*it,-0.50+(-0.38-(-0.50))*it);
+      FL2.view.rotation.set(0.05+(0-0.05)*it,0.13+(0-0.13)*it+FL2.inspectT*1.0,-0.04+(0-(-0.04))*it);
+      FL2.view.scale.setScalar(1+it*0.7);
+    }
+    FL2.light.intensity=4.2;
+    if(FL2.lens)FL2.lens.material.emissiveIntensity=4.5;
+    if(FL2.beam)FL2.beam.material.opacity=0.06;
+    return;
+  }
+  if(FL2.view)FL2.view.scale.setScalar(1);
   if(FL2.on){
     FL2.charge-=dt*FL2.drain;
     if(FL2.charge<=0){FL2.charge=0;FL2.on=false;showMsg('Фонарь погас',2.2);}
@@ -4687,6 +4725,7 @@ function uvInspectToggle(){
   if(UV.inspect){
     UV.inspectT=0;UV.holding=false;
     if(UV.state==='fire')UV.state='idle';
+    if(FL2.inspect)fl2InspectToggle();   // осматриваем только один предмет за раз
   }
 }
 

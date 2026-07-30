@@ -2861,7 +2861,8 @@ var OS={w:30,d:24,h:4.6,on:false,t:0,
 
 // ---------- фонарь: заряд и батарейки ----------
 var FL2={has:false,on:false,charge:1,drain:1/180,   // полного заряда хватает на 3 минуты
-         light:null,view:null,lens:null,beam:null};
+         light:null,view:null,lens:null,beam:null,
+         inspect:false,inspectT:0};
 
 function makeProTorch(){
   var g=new THREE.Group();
@@ -2903,15 +2904,45 @@ function initTorch(){
   camera.add(FL2.view);
 }
 function toggleTorch(){
-  if(!FL2.has)return;
+  if(!FL2.has||FL2.inspect)return;
   if(!FL2.on&&FL2.charge<=0){showMsg('Батарея села',1.8);return;}
   FL2.on=!FL2.on;
   sndBeep(FL2.on?900:400);
   if(FL2.on){FL2.shown=true;FL2.offT=0;}
   else FL2.offT=5.0;                    // ещё пять секунд в руках, потом убираем
 }
+// Осмотр фонарика: подъезжает в центр экрана, крутится, светит на
+// максимум — чисто показать купленный скин, на геймплей не влияет.
+function fl2InspectToggle(){
+  if(!FL2.has)return;
+  FL2.inspect=!FL2.inspect;
+  var btn=document.getElementById('fl2-inspect-btn');
+  if(btn)btn.classList.toggle('on',FL2.inspect);
+  if(FL2.inspect){
+    FL2.inspectT=0;FL2.shown=true;
+    if(window.UV&&UV.inspect)uvInspectToggle();   // осматриваем только один предмет за раз
+  }
+}
+
 function updateTorch(dt){
   if(!FL2.light)return;
+  var ibtn=document.getElementById('fl2-inspect-btn');
+  if(ibtn)ibtn.style.display=FL2.has?'block':'none';
+  if(FL2.inspect){
+    FL2.inspectT+=dt;
+    var it=Math.min(1,FL2.inspectT/0.5);
+    if(FL2.view){
+      FL2.view.visible=true;
+      FL2.view.position.set(-0.30+(0-(-0.30))*it,(FL2.y===undefined?-0.26:FL2.y)+(-0.05-(FL2.y===undefined?-0.26:FL2.y))*it,-0.50+(-0.38-(-0.50))*it);
+      FL2.view.rotation.set(0.05+(0-0.05)*it,0.13+(0-0.13)*it+FL2.inspectT*1.0,-0.04+(0-(-0.04))*it);
+      FL2.view.scale.setScalar(1+it*0.7);
+    }
+    FL2.light.intensity=4.2;
+    if(FL2.lens)FL2.lens.material.emissiveIntensity=4.5;
+    if(FL2.beam)FL2.beam.material.opacity=0.06;
+    return;
+  }
+  if(FL2.view)FL2.view.scale.setScalar(1);
   if(FL2.on){
     FL2.charge-=dt*FL2.drain;
     if(FL2.charge<=0){FL2.charge=0;FL2.on=false;showMsg('Фонарь погас',2.2);}
@@ -4390,6 +4421,7 @@ function uvInspectToggle(){
   if(UV.inspect){
     UV.inspectT=0;UV.holding=false;
     if(UV.state==='fire')UV.state='idle';
+    if(FL2.inspect)fl2InspectToggle();   // осматриваем только один предмет за раз
   }
 }
 

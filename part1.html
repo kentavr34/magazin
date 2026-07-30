@@ -16,6 +16,11 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
 #floor-ui{position:absolute;top:14px;left:14px;color:#aaa;font-size:11px;letter-spacing:3px;text-shadow:1px 1px 3px #000;}
 #fl-ui{position:absolute;top:14px;right:14px;color:#999;font-size:11px;letter-spacing:2px;text-shadow:1px 1px 3px #000;}
+#fl-inspect-btn{position:absolute;top:34px;right:14px;font-size:10px;letter-spacing:2px;
+  color:#c9a227;border:1px solid rgba(201,162,39,0.4);border-radius:4px;padding:4px 8px;
+  background:rgba(20,16,4,0.5);cursor:pointer;user-select:none;}
+#fl-inspect-btn:hover{border-color:#c9a227;color:#f0d060;}
+#fl-inspect-btn.on{background:rgba(120,90,10,0.5);border-color:#f0d060;}
 #msg{position:absolute;top:26%;left:50%;transform:translateX(-50%);color:#ddd;font-size:15px;text-align:center;line-height:1.6;text-shadow:0 0 12px #000;background:rgba(0,0,0,0.65);padding:10px 18px;border-radius:4px;max-width:84vw;opacity:0;transition:opacity 0.4s;pointer-events:none;}
 #warn{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);color:#f44;font-size:22px;font-weight:bold;letter-spacing:3px;opacity:0;transition:opacity 0.2s;pointer-events:none;text-align:center;text-shadow:0 0 20px #f00;}
 #prompt{position:absolute;bottom:185px;left:50%;transform:translateX(-50%);color:#888;font-size:12px;letter-spacing:2px;text-align:center;opacity:0;transition:opacity 0.3s;background:rgba(0,0,0,0.6);padding:6px 14px;border-radius:3px;white-space:nowrap;}
@@ -212,6 +217,7 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
   <div id="crosshair">＋</div>
   <div id="floor-ui">ЭТАЖ 1</div>
   <div id="fl-ui">🔦 ВКЛ</div>
+  <div id="fl-inspect-btn" onclick="flInspectToggle()">👁 ОСМОТР</div>
   <div id="hpbar"><div id="hplabel">HP</div><div id="hptrack"><div id="hpfill"></div></div></div>
   <div id="boss-hpbar"><div id="boss-hplabel">МЕБЕЛЬЩИК</div><div id="boss-hptrack"><div id="boss-hpfill"></div></div></div>
   <div id="weapon-ui">🔫 РУЖЬЁ</div>
@@ -1865,7 +1871,7 @@ function finishLastLock(){
 // ============================================================
 //  ФОНАРИК В РУКАХ — старый, поцарапанный, помаргивает
 // ============================================================
-var FLV={g:null,lens:null,beam:null,shown:false,y:-0.95,offT:0,fk:1,fkT:0,bob:0,glow:null};
+var FLV={g:null,lens:null,beam:null,shown:false,y:-0.95,offT:0,fk:1,fkT:0,bob:0,glow:null,inspect:false,inspectT:0};
 var FL_DOWN=-0.95, FL_UP=-0.30;
 
 function texScratchedMetal(){
@@ -1984,6 +1990,16 @@ function makeFlashlight(){
   return g;
 }
 
+// Осмотр фонарика: подъезжает в центр экрана, крутится, светит на
+// максимум — чисто показать купленный скин, на геймплей не влияет.
+function flInspectToggle(){
+  if(!FLV.g)return;
+  FLV.inspect=!FLV.inspect;
+  var btn=document.getElementById('fl-inspect-btn');
+  if(btn)btn.classList.toggle('on',FLV.inspect);
+  if(FLV.inspect){FLV.inspectT=0;FLV.shown=true;}
+}
+
 function updateFlashlight(dt,ts){
   if(!FLV.g)return;
   // мигание старой лампы
@@ -1993,6 +2009,20 @@ function updateFlashlight(dt,ts){
     else if(Math.random()<0.5){FLV.fk=0.25+Math.random()*0.35;FLV.fkT=0.04+Math.random()*0.11;}
     else FLV.fkT=0.5+Math.random()*2.0;
   }
+  if(FLV.inspect){
+    FLV.inspectT+=dt;
+    var it=Math.min(1,FLV.inspectT/0.5);
+    FLV.g.position.set(0.30+(0-0.30)*it,FLV.y+(-0.05-FLV.y)*it,-0.52+(-0.40-(-0.52))*it);
+    FLV.g.rotation.set(0.06+(0-0.06)*it,-0.13+(0-(-0.13))*it+FLV.inspectT*1.0,0.05+(0-0.05)*it);
+    FLV.g.scale.setScalar(1+it*0.7);
+    flashlight.intensity=2.5;
+    if(FLV.lens)FLV.lens.material.emissiveIntensity=2.8;
+    if(FLV.beam)FLV.beam.material.opacity=0.06;
+    if(FLV.glow)FLV.glow.material.opacity=0.55;
+    FLV.g.visible=true;
+    return;
+  }
+  FLV.g.scale.setScalar(1);
   // задержка перед тем, как убрать в карман
   if(!P.fl&&FLV.offT>0){FLV.offT-=dt;if(FLV.offT<=0)FLV.shown=false;}
   var target=FLV.shown?FL_UP:FL_DOWN;

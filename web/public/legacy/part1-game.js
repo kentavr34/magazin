@@ -1627,7 +1627,7 @@ function finishLastLock(){
 // ============================================================
 //  ФОНАРИК В РУКАХ — старый, поцарапанный, помаргивает
 // ============================================================
-var FLV={g:null,lens:null,beam:null,shown:false,y:-0.95,offT:0,fk:1,fkT:0,bob:0,glow:null};
+var FLV={g:null,lens:null,beam:null,shown:false,y:-0.95,offT:0,fk:1,fkT:0,bob:0,glow:null,inspect:false,inspectT:0};
 var FL_DOWN=-0.95, FL_UP=-0.30;
 
 function texScratchedMetal(){
@@ -1746,6 +1746,16 @@ function makeFlashlight(){
   return g;
 }
 
+// Осмотр фонарика: подъезжает в центр экрана, крутится, светит на
+// максимум — чисто показать купленный скин, на геймплей не влияет.
+function flInspectToggle(){
+  if(!FLV.g)return;
+  FLV.inspect=!FLV.inspect;
+  var btn=document.getElementById('fl-inspect-btn');
+  if(btn)btn.classList.toggle('on',FLV.inspect);
+  if(FLV.inspect){FLV.inspectT=0;FLV.shown=true;}
+}
+
 function updateFlashlight(dt,ts){
   if(!FLV.g)return;
   // мигание старой лампы
@@ -1755,6 +1765,20 @@ function updateFlashlight(dt,ts){
     else if(Math.random()<0.5){FLV.fk=0.25+Math.random()*0.35;FLV.fkT=0.04+Math.random()*0.11;}
     else FLV.fkT=0.5+Math.random()*2.0;
   }
+  if(FLV.inspect){
+    FLV.inspectT+=dt;
+    var it=Math.min(1,FLV.inspectT/0.5);
+    FLV.g.position.set(0.30+(0-0.30)*it,FLV.y+(-0.05-FLV.y)*it,-0.52+(-0.40-(-0.52))*it);
+    FLV.g.rotation.set(0.06+(0-0.06)*it,-0.13+(0-(-0.13))*it+FLV.inspectT*1.0,0.05+(0-0.05)*it);
+    FLV.g.scale.setScalar(1+it*0.7);
+    flashlight.intensity=2.5;
+    if(FLV.lens)FLV.lens.material.emissiveIntensity=2.8;
+    if(FLV.beam)FLV.beam.material.opacity=0.06;
+    if(FLV.glow)FLV.glow.material.opacity=0.55;
+    FLV.g.visible=true;
+    return;
+  }
+  FLV.g.scale.setScalar(1);
   // задержка перед тем, как убрать в карман
   if(!P.fl&&FLV.offT>0){FLV.offT-=dt;if(FLV.offT<=0)FLV.shown=false;}
   var target=FLV.shown?FL_UP:FL_DOWN;
