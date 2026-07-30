@@ -107,6 +107,18 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
 #key-red{border-color:#ff2a2a;color:#ff2a2a;}
 #key-green{border-color:#2ad84a;color:#2ad84a;}
 #key-blue{border-color:#3a7cff;color:#3a7cff;}
+/* ---- СПИСОК ЗАДАНИЙ: то же самое, что точки #keys, но с названием
+   и явной галочкой — видно не только "сколько уже", но и "что ещё" ---- */
+#questlist{display:none;position:fixed;right:10px;top:34px;z-index:20;
+  background:rgba(10,10,14,.78);border-left:3px solid #c9a227;padding:9px 13px;
+  font-family:'Courier New',monospace;pointer-events:none;max-width:200px;}
+#questlist .qt{font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.4);margin-bottom:7px;}
+#questlist .qi{display:flex;align-items:center;gap:8px;font-size:12px;color:#e4e0d6;margin:5px 0;}
+#questlist .qi .box{width:13px;height:13px;border:2px solid rgba(255,255,255,.35);flex:0 0 auto;position:relative;}
+#questlist .qi.done .box{border-color:#3fa85f;}
+#questlist .qi.done .box:after{content:'';position:absolute;left:2px;top:-1px;width:5px;height:9px;
+  border-right:2px solid #3fa85f;border-bottom:2px solid #3fa85f;transform:rotate(40deg);}
+#questlist .qi.done{color:#8a9a88;text-decoration:line-through;}
 #musdbg{display:none;position:fixed;top:6px;left:8px;z-index:22;pointer-events:none;
   font-family:'Courier New',monospace;font-size:9px;letter-spacing:1px;
   color:rgba(120,255,160,0.55);text-shadow:0 0 6px rgba(0,0,0,0.9);}
@@ -144,6 +156,12 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
 <div id="lidTop"></div><div id="lidBot"></div>
 <div id="vig"></div><div id="grain"></div><div id="dmg"></div>
 <div id="keys"><div id="key-red" class="keyicon"></div><div id="key-green" class="keyicon"></div><div id="key-blue" class="keyicon"></div></div>
+<div id="questlist">
+  <div class="qt">ЗАДАНИЕ</div>
+  <div class="qi" id="qi-red"><div class="box"></div>Красный генератор</div>
+  <div class="qi" id="qi-green"><div class="box"></div>Зелёный генератор</div>
+  <div class="qi" id="qi-blue"><div class="box"></div>Синий генератор</div>
+</div>
 <div id="wires">
   <div id="wireTitle"></div>
   <div id="wireHint"></div>
@@ -169,6 +187,9 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
   <div class="row"><b>Кнопки справа</b> — бег / присесть / прыжок / фонарик</div>
   <button id="startbtn" onclick="startGame()">ВОЙТИ В МАГАЗИН</button>
   <button id="continuebtn" onclick="continueGame()" style="margin-top:10px;display:none;">ПРОДОЛЖИТЬ — ЭТАЖ <span id="continuefloor">2</span></button>
+  <div id="debugfloors" style="display:none;margin-top:14px;">
+    <div style="font-size:10px;letter-spacing:2px;color:#8a7a3a;margin-bottom:6px;">ОТЛАДКА — ЛЮБОЙ ЭТАЖ</div>
+  </div>
 </div>
 <div id="endscreen">
   <div id="endtitle">ВЫ ПОГИБЛИ</div>
@@ -207,6 +228,7 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
 <script>if(!window.THREE)document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
 <script src="js/profile.js"></script>
 <script src="js/progress.js"></script>
+<script src="js/coins.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/detail.js"></script>
 <script src="js/updater.js"></script>
@@ -1224,6 +1246,7 @@ function f4Reset(){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   var kb=document.getElementById('keys');if(kb)kb.style.display='none';
+  var ql=document.getElementById('questlist');if(ql)ql.style.display='none';
 }
 
 function f4Start(){
@@ -1241,7 +1264,9 @@ function f4Start(){
   ['noisebar','noiselbl','stambar'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='block';
   });
-  document.getElementById('keys').style.display='flex';updateKeyHUD();
+  document.getElementById('keys').style.display='flex';
+  var ql2=document.getElementById('questlist');if(ql2)ql2.style.display='block';
+  updateKeyHUD();
 }
 
 // Шум зависит только от того, как ты двигаешься
@@ -1620,6 +1645,7 @@ function genAct(g){
     updateKeyHUD();
     showMsg('Ключ забран: '+g.name,2600);
     say(g.name+' ключ у меня.',0.86,0.55);
+    if(window.Coins)Coins.earn(10,g.name+' генератор');
     return;
   }
   showMsg('Тут уже пусто.',1600);
@@ -1628,6 +1654,8 @@ function updateKeyHUD(){
   ['red','green','blue'].forEach(function(id){
     var el=document.getElementById('key-'+id);
     if(el)el.className='keyicon'+(KEYS[id]?' have':'');
+    var qi=document.getElementById('qi-'+id);
+    if(qi)qi.className='qi'+(KEYS[id]?' done':'');
   });
 }
 // дверь выхода: снимаем замки по одному
@@ -2033,6 +2061,12 @@ function enterFloorAt(floorNum,opts){
   if(floorNum===4){BossMusic.start();BossMusic.setLevel(0.55);chaseOn=false;chaseActive=false;}
   else BossMusic.stop();
   clearScene();buildFloor(floorNum);
+  // f4Start() создаёт босса и генераторы — это НАСТРОЙКА этажа, а не
+  // вступительная реплика, поэтому вызывается всегда, а не только
+  // когда включены сообщения. Раньше он был внутри блока с текстом
+  // и пропускался при "продолжить"/переходе в режиме отладки —
+  // чердак оставался без босса и без генераторов.
+  if(floorNum===4)f4Start();
   spawnEntities(floorNum);
   document.getElementById('floor-ui').textContent=cfg.lbl;setPrompt('',false);
   // Экспоненциальный туман вместо линейного: даёт мягкое естественное
@@ -2042,12 +2076,17 @@ function enterFloorAt(floorNum,opts){
   ambientLight.intensity=floorNum===4?0.03:0.12;   // на чердаке почти полная тьма
   // Дошли до этажа N — запоминаем как чек-пойнт. Прогресс только растёт:
   // с более раннего этажа сюда не откатимся, даже зайдя с другого устройства.
-  if(window.Progress)Progress.setValue('p1_maxfloor',floorNum);
+  // Монета за прогресс — только за ПЕРВОЕ достижение этажа, не за
+  // каждый повторный заход (продолжение с чек-пойнта, отладка).
+  if(window.Progress){
+    var prevMaxFloor=Progress.getValueSync('p1_maxfloor')||1;
+    if(floorNum>prevMaxFloor&&window.Coins)Coins.earn(15,(floorNum===4?'чердак':'этаж '+floorNum));
+    Progress.setValue('p1_maxfloor',floorNum);
+  }
   if(opts.messages===false)return;
   if(floorNum===2){showMsg('Второй этаж. Здесь что-то не так...',3000);say('Второй этаж. Темнее. И этот запах.',0.8,0.52);setTimeout(function(){showMsg('Осторожно. Мебель здесь живая.',3000);},5000);}
   else if(floorNum===3){showMsg('Третий этаж.',2000);say('Третий этаж.',0.76,0.48);setTimeout(function(){showMsg('Их здесь намного больше.',2500);},3200);}
   else if(floorNum===4){
-    f4Start();
     showMsg('Чердак. Он уже здесь.',3000);
     say('Он уже здесь. Он меня не видит.',0.8,0.5);
     setTimeout(function(){if(!dead){showMsg('Он слепой. Иди сидя — он слышит шаги.',4000);say('Он слепой. Но слышит.',0.78,0.48);}},4200);
@@ -2287,6 +2326,8 @@ function winGame(){
   // Отмечаем часть I пройденной — от этого зависит, откроется ли
   // часть II на главной странице.
   if(window.Progress)Progress.markComplete('part1');
+  if(window.Coins&&!Progress.isCompleteSync('part1_reward'))Coins.earn(50,'финал части I');
+  if(window.Progress)Progress.markComplete('part1_reward');
   ['boss-hpbar','bshoot','weapon-ui','blue-cube-ui'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   var fade=document.createElement('div');
   fade.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:90;opacity:0;transition:opacity 2s;';
@@ -2930,7 +2971,32 @@ function refreshContinueButton(){
   if(n>1){document.getElementById('continuefloor').textContent=(n===4?'ЧЕРДАК':n);btn.style.display='';}
   else btn.style.display='none';
 }
-if(window.Profile)Profile.init(function(){ if(window.Progress)Progress.refresh(refreshContinueButton); });
+// Режим отладки: ?unlockall=1 — сразу выбрать любой этаж, минуя
+// чек-пойнт. Реального прогресса не трогает, только запуск.
+var DEBUG_UNLOCK=/[?&]unlockall=1\b/.test(location.search);
+function debugEnterFloor(n){
+  document.getElementById('start').style.display='none';
+  unlockSpeech();getAC();started=true;startAmbient();
+  setTimeout(function(){BossMusic.prepare();},60);
+  setTimeout(function(){enterFloorAt(n,{messages:false});},400);
+}
+if(DEBUG_UNLOCK){
+  var df=document.getElementById('debugfloors');
+  if(df){
+    df.style.display='block';
+    [1,2,3,4].forEach(function(n){
+      var b=document.createElement('button');
+      b.textContent=(n===4?'ЧЕРДАК':'ЭТАЖ '+n);
+      b.style.cssText='margin:3px;min-width:70px;';
+      b.onclick=function(){debugEnterFloor(n);};
+      df.appendChild(b);
+    });
+  }
+}
+if(window.Profile)Profile.init(function(){
+  if(window.Progress)Progress.refresh(refreshContinueButton);
+  if(window.Coins)Coins.refresh();
+});
 
 // INIT
 initThree();

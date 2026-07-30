@@ -54,7 +54,7 @@ a.card .lock{float:right;font-size:13px;color:#8a8578}
   <h1>ЗАБРОШЕННЫЙ МАГАЗИН</h1>
   <div class="sub">И Г Р А</div>
 
-  <a class="card" href="part1.html"><b>ЧАСТЬ I</b>
+  <a class="card" href="part1.html" id="card1"><b>ЧАСТЬ I</b>
     <span>Охранник возвращается в магазин, где пропадали люди. Четыре этажа и чердак.</span></a>
   <a class="card" href="part2.html" id="card2"><b>ЧАСТЬ II <span class="lock hide" id="lock2">🔒</span></b>
     <span id="card2sub">Сон, побег, тюрьма, склады и приют под землёй.</span></a>
@@ -127,10 +127,23 @@ function doLogin(){
 }
 function doLogout(){Profile.logout(function(){location.reload();});}
 
+// Режим отладки: у кого в адресе ?unlockall=1 — видит всё открытым.
+// Реального прогресса это не трогает, только то, что показано ЭТОМУ
+// человеку в ЭТОЙ вкладке — обычные игроки блокировку видят как есть.
+var DEBUG_UNLOCK=/[?&]unlockall=1\b/.test(location.search);
+// Флаг едет дальше вместе с переходом — иначе на part1/part2
+// он терялся бы уже на первом клике.
+if(DEBUG_UNLOCK){
+  ['card1','card2'].forEach(function(id){
+    var a=$(id); if(!a)return;
+    a.href=a.getAttribute('href')+'?unlockall=1';
+  });
+}
+
 // Часть II заперта, пока не пройдена часть I — первый уровень
 // системы "прошёл первое, открылось следующее".
 function applyLevelGate(){
-  var done=Progress.isCompleteSync('part1');
+  var done=DEBUG_UNLOCK||Progress.isCompleteSync('part1');
   var card=$('card2');
   if(done){
     card.classList.remove('locked');
