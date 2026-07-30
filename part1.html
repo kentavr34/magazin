@@ -1056,16 +1056,48 @@ var EP4=['Ты не найдёшь выход.','Я вижу тебя.','Куд�
 var entityMeshes=[];
 
 function createEntityMesh(){
-  // Simple billboard - tall dark figure placeholder
-  var g=new THREE.BoxGeometry(0.8,2.2,0.2);
+  // Торс + отдельные ноги/руки на шарнирах (вместо одной сплошной
+  // коробки), чтобы можно было анимировать шаг — walkCycle() качает
+  // именно эти шарниры.
+  var g=new THREE.Group();
   var m=new THREE.MeshStandardMaterial({color:0x5a1a1a,roughness:0.9,emissive:0x2a0505,emissiveIntensity:0.6});
-  var mesh=new THREE.Mesh(g,m);
+  var torso=new THREE.Mesh(new THREE.BoxGeometry(0.8,1.3,0.2),m);
+  torso.position.y=0.45;g.add(torso);
+  var legGeo=new THREE.BoxGeometry(0.28,0.9,0.28);
+  g.userData.legs=[];
+  [-0.18,0.18].forEach(function(dx){
+    var piv=new THREE.Group();piv.position.set(dx,-0.2,0);
+    var l=new THREE.Mesh(legGeo,m);l.position.y=-0.45;piv.add(l);
+    g.add(piv);g.userData.legs.push(piv);
+  });
+  var armGeo=new THREE.BoxGeometry(0.16,0.9,0.16);
+  g.userData.arms=[];
+  [-0.45,0.45].forEach(function(dx){
+    var piv=new THREE.Group();piv.position.set(dx,0.75,0);
+    var a=new THREE.Mesh(armGeo,m);a.position.y=-0.4;piv.add(a);
+    g.add(piv);g.userData.arms.push(piv);
+  });
   // Eyes
   var eg=new THREE.SphereGeometry(0.06,8,8);
   var em=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:2});
-  var el=new THREE.Mesh(eg,em);el.position.set(-0.18,0.8,0.11);mesh.add(el);
-  var er=new THREE.Mesh(eg,em);er.position.set(0.18,0.8,0.11);mesh.add(er);
-  return mesh;
+  var el=new THREE.Mesh(eg,em);el.position.set(-0.18,0.8,0.11);g.add(el);
+  var er=new THREE.Mesh(eg,em);er.position.set(0.18,0.8,0.11);g.add(er);
+  g.userData.eyes=[el,er];
+  return g;
+}
+
+// Общая походка для фигур из мебели: ноги и руки качаются в
+// противофазе, частота и размах растут со скоростью — из одной
+// формулы получается и медленный патрульный шаг, и бег погони.
+function walkCycle(rig,dt,spd){
+  if(!rig||!rig.userData||!rig.userData.legs)return;
+  var ud=rig.userData;
+  var target=spd>0.0015?spd*26:0;
+  ud.walkSpd=(ud.walkSpd||0)+(target-(ud.walkSpd||0))*Math.min(1,dt*6);
+  ud.walkPhase=(ud.walkPhase||0)+dt*(0.6+ud.walkSpd)*9;
+  var amp=Math.min(0.55,ud.walkSpd*0.5);
+  ud.legs.forEach(function(leg,i){leg.rotation.x=Math.sin(ud.walkPhase+i*Math.PI)*amp;});
+  if(ud.arms)ud.arms.forEach(function(arm,i){arm.rotation.x=Math.sin(ud.walkPhase+i*Math.PI+Math.PI)*amp*0.75;});
 }
 
 function spawnEntities(fl){
@@ -1102,7 +1134,10 @@ function updateEntities(dt){
       // Billboard — always face player
       mesh.rotation.y=Math.atan2(P.x-e.x,P.z-e.z);
       // Eyes pulse
-      mesh.children.forEach(function(c){if(c.material&&c.material.emissiveIntensity!==undefined)c.material.emissiveIntensity=e.chase?3:1.5+Math.sin(Date.now()*0.004);});
+      var pulse=e.chase?3:1.5+Math.sin(Date.now()*0.004);
+      if(mesh.userData.eyes)mesh.userData.eyes.forEach(function(c){c.material.emissiveIntensity=pulse;});
+      // шаг: идёт — качаются ноги/руки, стоит — замирают
+      walkCycle(mesh,dt,e.chase?e.spd:0);
     }
     if(e.chase){
       // Спрятался за диван или стену на полторы секунды — существо
@@ -1142,11 +1177,15 @@ function createBossMesh(){
   // Потолок на чердаке — 2.6 единицы. Рост берём 2.15 (~4 метра),
   // чтобы макушка была под потолком и голова оставалась видна.
   var g=new THREE.Group();
-  // ноги — стопки тумбочек (0 .. 0.55)
+  // ноги — стопки тумбочек (0 .. 0.55), на шарнире от бедра —
+  // так же, как у обычных мебельщиков, walkCycle() качает g.userData.legs
   var legM=new THREE.MeshStandardMaterial({color:0x3a2210,roughness:0.95});
+  g.userData.legs=[];
   [-0.22,0.22].forEach(function(dx){
+    var piv=new THREE.Group();piv.position.set(dx,0.55,0);
     var l=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.55,0.34),legM);
-    l.position.set(dx,0.275,0);g.add(l);
+    l.position.y=-0.275;piv.add(l);
+    g.add(piv);g.userData.legs.push(piv);
   });
   // тело — сложенные диваны (0.55 .. 1.75)
   var body=new THREE.Mesh(new THREE.BoxGeometry(0.82,1.20,0.50),
@@ -1165,18 +1204,23 @@ function createBossMesh(){
   [-0.14,0.14].forEach(function(dx){
     var e=new THREE.Mesh(eg,em);e.position.set(dx,1.96,0.24);g.add(e);
   });
-  // руки: диван и шкаф — пока коробки, форму доделаем позже
+  // руки: диван и шкаф — пока коробки, форму доделаем позже.
+  // На шарнире от плеча, как и ноги, — качаются в updateF4()/CUT.
   var armM=new THREE.MeshStandardMaterial({color:0x5a3520,roughness:0.95});
+  g.userData.arms=[];
   [-0.56,0.56].forEach(function(dx){
+    var piv=new THREE.Group();piv.position.set(dx,1.625,0);
     var a=new THREE.Mesh(new THREE.BoxGeometry(0.26,1.05,0.26),armM);
-    a.position.set(dx,1.10,0);g.add(a);
+    a.position.y=-0.525;piv.add(a);
+    g.add(piv);g.userData.arms.push(piv);
+    if(dx>0)g.userData.rightArmPivot=piv;   // пружины крепим сюда же, ниже
   });
-  // свисающие пружины с правой руки
+  // свисающие пружины с правой руки — дети того же шарнира, чтобы качались вместе с рукой
   var spM=new THREE.MeshStandardMaterial({color:0x8a8a8a,roughness:0.4,metalness:0.8});
   for(var k=0;k<4;k++){
     var s=new THREE.Mesh(new THREE.TorusGeometry(0.035,0.008,5,7),spM);
-    s.position.set(0.56+(k%2)*0.05-0.02,0.62-k*0.09,0.05);
-    s.rotation.x=Math.PI/2;g.add(s);
+    s.position.set((k%2)*0.05-0.02,-1.005-k*0.09,0.05);
+    s.rotation.x=Math.PI/2;g.userData.rightArmPivot.add(s);
   }
   var pl=new THREE.PointLight(0xff3020,1.0,6);pl.position.set(0,1.5,0);g.add(pl);
   return g;
@@ -1382,6 +1426,7 @@ function updateF4(dt){
     F4.mesh.children.forEach(function(c){
       if(c.material&&c.material.emissiveIntensity!==undefined)c.material.emissiveIntensity=pulseE;
     });
+    walkCycle(F4.mesh,dt,spd);
   }
 
   // --- реплики ---
@@ -2277,6 +2322,8 @@ function updateCut(dt){
 
 function endCut(){
   CUT.on=false;
+  if(window.Coins&&window.Progress&&!Progress.isCompleteSync('part1_secret_reward'))Coins.earn(40,'секретная концовка части I');
+  if(window.Progress){Progress.markComplete('part1_secret');Progress.markComplete('part1_secret_reward');}
   document.body.classList.remove('cine');
   lidSet(0);
   camera.rotation.z=0;

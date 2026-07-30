@@ -50,9 +50,17 @@
   A.isUnlocked = function () { return !!(global.Progress && Progress.isCompleteSync(FLAG)); };
   A.price = PRICE;
 
-  /* Покупка — вызывается из магазина (js/inventory.js), требует Coins. */
+  /* Покупка — вызывается из магазина (js/inventory.js), требует Coins.
+     Условие "обе части + обе секретные концовки" дублируется здесь же
+     (не только в UI кнопки), чтобы покупка была невозможна в обход
+     магазина, например из консоли. */
+  function storyDone() {
+    return !!(global.Progress && Progress.isCompleteSync('part1') && Progress.isCompleteSync('part1_secret') &&
+      Progress.isCompleteSync('part2') && Progress.isCompleteSync('part2_secret'));
+  }
   A.buy = function () {
     if (A.isUnlocked()) return true;
+    if (!storyDone()) return false;
     if (!global.Coins || !Coins.spend(PRICE, 'Админ-панель')) return false;
     if (global.Progress) Progress.markComplete(FLAG);
     return true;

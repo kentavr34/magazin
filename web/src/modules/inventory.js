@@ -270,6 +270,16 @@
 
   /* Разовая дорогая покупка — не скин, отдельная кнопка "владею/купить".
      Рендерится, только если модуль js/admin.js подключён на этой странице. */
+  /* Админ-панель — не только монеты: нужно пройти обе части и обе
+     секретные концовки. Секретная концовка part2 пока не реализована
+     (собственной задачи), поэтому до тех пор кнопка остаётся
+     заблокированной, даже если монет и прохождений хватает, — это
+     ожидаемо, не баг. */
+  function adminStoryDone() {
+    if (!global.Progress) return false;
+    return Progress.isCompleteSync('part1') && Progress.isCompleteSync('part1_secret') &&
+      Progress.isCompleteSync('part2') && Progress.isCompleteSync('part2_secret');
+  }
   function renderAdmin() {
     var el = panel.querySelector('#inv-admin');
     if (!el) return;
@@ -278,10 +288,13 @@
     var row = document.createElement('div'); row.className = 'shopitem';
     var n = document.createElement('div'); n.className = 'n';
     var unlocked = ADMIN.isUnlocked();
+    var storyDone = adminStoryDone();
     n.textContent = 'Админ-панель (бессмертие, ноклип и др.)' + (unlocked ? '' : ' — 🪙 ' + ADMIN.price);
     var b = document.createElement('button'); b.className = 'k';
     if (unlocked) {
       b.textContent = 'ОТКРЫТЬ'; b.onclick = function () { Inv.close(); ADMIN.open(); };
+    } else if (!storyDone) {
+      b.textContent = 'ЗАКРЫТО'; b.setAttribute('disabled', 'true');
     } else {
       b.textContent = 'КУПИТЬ';
       if (!global.Coins || Coins.get() < ADMIN.price) b.setAttribute('disabled', 'true');
@@ -289,6 +302,14 @@
     }
     row.appendChild(n); row.appendChild(b);
     el.appendChild(row);
+    if (!unlocked) {
+      var hint = document.createElement('div'); hint.className = 'row';
+      hint.style.cssText = 'font-size:10px;color:#5a5560;padding-top:0;';
+      hint.textContent = storyDone
+        ? 'Открыто: обе части и обе секретные концовки пройдены.'
+        : 'Нужно пройти часть I, часть II и секретные концовки обеих частей.';
+      el.appendChild(hint);
+    }
   }
 
   function renderAll() {

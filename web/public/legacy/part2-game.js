@@ -6628,6 +6628,10 @@ function bsAct(){
   }else if(nBs.t==='exit'){
     BS.on=false;questDone();
     Music.outro&&Music.outro();
+    // Это пока единственная точка, до которой дописан сюжет части II
+    // (дальше — клиффхэнгер), поэтому засчитываем прохождение здесь.
+    if(window.Coins&&window.Progress&&!Progress.isCompleteSync('part2_reward'))Coins.earn(150,'финал части II');
+    if(window.Progress){Progress.markComplete('part2');Progress.markComplete('part2_reward');}
     document.getElementById('black').style.transition='opacity 1.6s';
     document.getElementById('black').style.opacity='1';
     setTimeout(function(){
