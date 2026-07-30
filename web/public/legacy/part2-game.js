@@ -4389,6 +4389,7 @@ function uvFire(){
   if(typeof scareMobsUV==='function')scareMobsUV();
   if(typeof uvHouseShot==='function')uvHouseShot();
   if(typeof basementShot==='function')basementShot();
+  if(typeof throneAllyShot==='function')throneAllyShot();
 }
 function uvReload(){
   if(!UV.has||UV.state==='reload')return;
@@ -6099,6 +6100,7 @@ function startThrone(){
 }
 function updateThrone(dt){
   if(!TR2.on)return;
+  if(SECRET2.on&&SECRET2.stage===1){updateSecretCollapse(dt);return;}
   TR2.t+=dt;var t=TR2.t;
   // щупальца шевелятся
   if(TR2.boss&&TR2.boss.userData.tents){
@@ -6253,6 +6255,296 @@ function sndAllyShot(){
   var hp=a.createBiquadFilter();hp.type='highpass';hp.frequency.value=1400;
   var ng=a.createGain();ng.gain.value=0.32;
   ns.connect(hp);hp.connect(ng);ng.connect(a.destination);ns.start(t0);
+}
+
+// ============================================================
+//  СЕКРЕТНАЯ КОНЦОВКА ЧАСТИ II
+//  Вместо того чтобы просто идти за синим союзником в тронном зале,
+//  можно посветить на него УФ-пистолетом. Он падает — и вместо
+//  обычной ветки (askQuestion → goToBase) начинается отдельная:
+//  забираем ключ у упавшего → грузовик → кузов → секретная дверь →
+//  комната со Стеллажником → союзник оказывается предателем.
+//  Всё, что здесь начато, полностью заменяет обычный финал тронного
+//  зала — TR2.asked=true гасит обычную ветку насовсем.
+// ============================================================
+var SECRET2={on:false,stage:0,t:0,fell:false,truck:null,glassBroken:false,monster:null};
+
+function throneAllyShot(){
+  if(!(TR2.walking&&TR2.ally)||TR2.asked||SECRET2.on)return;
+  var dx=TR2.ally.position.x-P.x,dz=TR2.ally.position.z-P.z,d=Math.hypot(dx,dz)||1;
+  if(d>9)return;
+  var fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw);
+  var dot=(dx/d)*fx+(dz/d)*fz;
+  if(dot<0.5)return;                       // должны целиться примерно на него
+  startSecretCollapse();
+}
+function startSecretCollapse(){
+  SECRET2.on=true;SECRET2.stage=1;SECRET2.t=0;SECRET2.fell=false;
+  TR2.walking=false;TR2.asked=true;
+  sndScare();
+  showSub('Синий','А-а!',1.4);sayE('А-а!');
+}
+function updateSecretCollapse(dt){
+  SECRET2.t+=dt;
+  var kf=Math.min(1,SECRET2.t/1.3);
+  if(TR2.ally){
+    TR2.ally.rotation.x=-kf*1.35;
+    TR2.ally.position.y=Math.max(0,1.4-kf*1.4);
+  }
+  if(kf>=1&&!SECRET2.fell){
+    SECRET2.fell=true;SECRET2.stage=2;
+    if(typeof sndCrash==='function')sndCrash();
+    showSub('Вы','Что... что я наделал?',3.0);
+    setTimeout(function(){showSub('Вы','У него на поясе два ключа. Этот — не мой размер, не берётся.',4.4);},3200);
+    setTimeout(function(){showSub('Вы','А вот этот, поменьше — беру.',3.0);},8000);
+    setTimeout(startSecretTruck,11500);
+  }
+}
+
+function makeSecTruck(){
+  var g=new THREE.Group();
+  var body=new THREE.MeshStandardMaterial({color:0x2a4a3a,roughness:0.75,metalness:0.2});
+  var dark=new THREE.MeshStandardMaterial({color:0x141414,roughness:0.9});
+  var glassM=new THREE.MeshStandardMaterial({color:0x9adfff,roughness:0.15,metalness:0.3,
+    transparent:true,opacity:0.55});
+  // кабина
+  var cab=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.9,2.4),body);
+  cab.position.set(0,1.35,3.0);g.add(cab);
+  var glass=new THREE.Mesh(new THREE.PlaneGeometry(1.4,0.9),glassM);
+  glass.position.set(0,1.75,4.21);g.add(glass);g.userData.glass=glass;
+  // кузов
+  var bed=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.0,5.2),dark);
+  bed.position.set(0,1.4,-0.2);g.add(bed);
+  // колёса
+  var wheelM=new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:0.95});
+  [[1.25,3.2],[-1.25,3.2],[1.35,-1.8],[-1.35,-1.8]].forEach(function(p){
+    var w=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.4,14),wheelM);
+    w.rotation.z=Math.PI/2;w.position.set(p[0],0.5,p[1]);g.add(w);
+  });
+  return g;
+}
+function buildSecretTruck(){
+  clearScene();walls=[];LAMPS=[];
+  var W3=12,D3=14,HH=3.6;
+  setBounds(0,0,W3,D3);
+  var wallM=new THREE.MeshStandardMaterial({color:0x2a2822,roughness:1.0,map:TEX.wallClean});
+  TEX.wallClean.repeat.set(W3/3,HH/2);
+  MATS.corrFloor.map.repeat.set(W3,D3);
+  var fl=new THREE.Mesh(new THREE.PlaneGeometry(W3,D3),MATS.corrFloor);
+  fl.rotation.x=-Math.PI/2;fl.position.set(W3/2,0,D3/2);addObj(fl);
+  var ce=new THREE.Mesh(new THREE.PlaneGeometry(W3,D3),MATS.dark);
+  ce.rotation.x=Math.PI/2;ce.position.set(W3/2,HH,D3/2);addObj(ce);
+  box(W3,HH,0.3,wallM,W3/2,HH/2,0);
+  box(W3,HH,0.3,wallM,W3/2,HH/2,D3);
+  box(0.3,HH,D3,wallM,0,HH/2,D3/2);
+  box(0.3,HH,D3,wallM,W3,HH/2,D3/2);
+  SECRET2.truck=makeSecTruck();
+  SECRET2.truck.position.set(W3/2,0,D3/2);
+  scene.add(SECRET2.truck);objs.push(SECRET2.truck);
+  solid(W3/2-1.5,D3/2-3.0,W3/2+1.5,D3/2+3.0);
+  P.x=W3/2;P.z=D3-1.6;P.y=0;P.yaw=Math.PI;P.pitch=0;
+  camera.rotation.z=0;camera.up.set(0,1,0);
+}
+function startSecretTruck(){
+  PHASE='secret2';SECRET2.stage=3;SECRET2.glassBroken=false;
+  startLoading(buildSecretTruck,function(){
+    PHASE='secret2';
+    document.getElementById('black').style.transition='opacity 1.8s';
+    document.getElementById('black').style.opacity='0';
+    setTimeout(function(){showMsg('Кажется, не пройти. Разве что через грузовик.',3.4);},1600);
+    setTimeout(function(){questShow('Найти путь через грузовик','Разбейте стекло кабины');},3200);
+  });
+}
+var nSec2=null;
+function secretNear(){
+  nSec2=null;
+  if(!SECRET2.truck)return;
+  var tx=SECRET2.truck.position.x,tz=SECRET2.truck.position.z;
+  if(SECRET2.stage===3){
+    var target=SECRET2.glassBroken?[tx,tz+2.6]:[tx,tz+4.0];
+    var d=Math.hypot(P.x-target[0],P.z-target[1]);
+    if(d<1.8)nSec2=SECRET2.glassBroken?{t:'climb'}:{t:'glass'};
+  }else if(SECRET2.stage===4){
+    var d2=Math.hypot(P.x-tx,P.z-(tz-2.4));
+    if(d2<1.8)nSec2={t:'door'};
+  }
+  if(nSec2){
+    setPrompt({glass:'👊 РАЗБИТЬ СТЕКЛО — E',climb:'⬆ ЗАЛЕЗТЬ В КУЗОВ — E',
+      door:'🚪 ОТКРЫТЬ ДВЕРЬ — E'}[nSec2.t],true);
+  }else setPrompt('',false);
+}
+function secret2Act(){
+  if(!nSec2)return;
+  if(nSec2.t==='glass'){
+    SECRET2.glassBroken=true;
+    if(SECRET2.truck.userData.glass)SECRET2.truck.userData.glass.visible=false;
+    if(typeof sndCrash==='function')sndCrash();
+    showMsg('Стекло разбито',1.8);setPrompt('',false);
+  }else if(nSec2.t==='climb'){
+    SECRET2.stage=4;
+    P.x=SECRET2.truck.position.x;P.z=SECRET2.truck.position.z-1.6;P.yaw=Math.PI;
+    showMsg('Внутри кузова темно... а вот и дверь.',2.8);setPrompt('',false);
+    questShow('Найти секретную дверь','Она в конце кузова');
+  }else if(nSec2.t==='door'){
+    setPrompt('',false);
+    startSecretRoom();
+  }
+}
+function updateSecret2(dt){
+  secretNear();
+  if(SECRET2.stage>=6&&SECRET2.monster){
+    SECRET2.t+=dt;
+    SECRET2.monster.rotation.y=Math.PI+Math.sin(SECRET2.t*0.4)*0.15;
+    if(SECRET2.monster.userData.scan)SECRET2.monster.userData.scan.forEach(function(s,i){
+      s.material.emissiveIntensity=1.5+Math.sin(SECRET2.t*3+i*1.4)*1.2;
+    });
+  }
+}
+
+function makeStellazhnik(){
+  // 2.9 метра, из старых стеллажей и электроники — тот же принцип,
+  // что и у обычных мебельщиков (createBossMesh в part1.html), только
+  // выше и из другого "материала": полки/ящики вместо диванов,
+  // тонкие лестничные рамы вместо сплошных рук-коробок.
+  var g=new THREE.Group();
+  var frameM=new THREE.MeshStandardMaterial({color:0x1c1712,roughness:0.9,metalness:0.3});
+  var shelfM=new THREE.MeshStandardMaterial({color:0x5a4a32,roughness:0.92});
+  var tanM=new THREE.MeshStandardMaterial({color:0x8a7a54,roughness:0.9});
+  function ladderLimb(len){
+    var limb=new THREE.Group();
+    var rail=new THREE.BoxGeometry(0.10,len,0.10);
+    [-0.11,0.11].forEach(function(dx){
+      var r=new THREE.Mesh(rail,frameM);r.position.x=dx;limb.add(r);
+    });
+    var rungs=Math.max(3,Math.floor(len/0.28));
+    for(var i=0;i<rungs;i++){
+      var rung=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.05,0.05),frameM);
+      rung.position.y=len/2-0.14-i*(len-0.28)/Math.max(1,rungs-1);
+      limb.add(rung);
+    }
+    return limb;
+  }
+  // ноги — на шарнире от бедра
+  g.userData.legs=[];
+  [-0.24,0.24].forEach(function(dx){
+    var piv=new THREE.Group();piv.position.set(dx,1.55,0);
+    var leg=ladderLimb(1.55);leg.position.y=-0.775;piv.add(leg);
+    g.add(piv);g.userData.legs.push(piv);
+  });
+  // торс — стопка ящиков/полок разной ширины (1.55 .. 2.55)
+  var t1=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.55,0.42),shelfM);
+  t1.position.y=1.83;g.add(t1);
+  var t2=new THREE.Mesh(new THREE.BoxGeometry(0.85,0.45,0.40),tanM);
+  t2.position.y=2.28;g.add(t2);
+  var t3=new THREE.Mesh(new THREE.BoxGeometry(0.75,0.35,0.36),shelfM);
+  t3.position.y=2.63;g.add(t3);
+  // полки открыты спереди — намёк рамкой потемнее
+  var slot=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.16,0.02),
+    new THREE.MeshStandardMaterial({color:0x0e0c08,roughness:1.0}));
+  slot.position.set(0,1.9,0.22);g.add(slot);
+  // руки — тоже лестничные рамы, на шарнире от плеча
+  g.userData.arms=[];
+  [-0.62,0.62].forEach(function(dx){
+    var piv=new THREE.Group();piv.position.set(dx,2.5,0);
+    var arm=ladderLimb(1.35);arm.position.y=-0.675;piv.add(arm);
+    g.add(piv);g.userData.arms.push(piv);
+  });
+  // голова — электронная панель со сканирующими полосками вместо глаз
+  var head=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.30,0.34),
+    new THREE.MeshStandardMaterial({color:0x141210,roughness:0.6,metalness:0.4}));
+  head.position.y=2.86;g.add(head);
+  var scanM=new THREE.MeshStandardMaterial({color:0xffb040,emissive:0xff8a10,emissiveIntensity:2.0});
+  g.userData.scan=[];
+  [-0.13,0,0.13].forEach(function(dx){
+    var s=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.05,0.02),scanM);
+    s.position.set(dx,2.90,0.18);g.add(s);g.userData.scan.push(s);
+  });
+  var redM=new THREE.MeshStandardMaterial({color:0xc02020,emissive:0x900000,emissiveIntensity:1.0});
+  var indicator=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.02),redM);
+  indicator.position.set(0,2.78,0.18);g.add(indicator);
+  var pl=new THREE.PointLight(0xffa040,0.7,5);pl.position.set(0,2.86,0.3);g.add(pl);
+  return g;
+}
+function buildSecretRoom(){
+  clearScene();walls=[];LAMPS=[];
+  var W4=11,D4=13,HH=4.2;
+  setBounds(0,0,W4,D4);
+  var wallM=new THREE.MeshStandardMaterial({color:0x201d18,roughness:1.0,map:TEX.wallClean});
+  TEX.wallClean.repeat.set(W4/3,HH/2);
+  MATS.corrFloor.map.repeat.set(W4,D4);
+  var fl=new THREE.Mesh(new THREE.PlaneGeometry(W4,D4),MATS.corrFloor);
+  fl.rotation.x=-Math.PI/2;fl.position.set(W4/2,0,D4/2);addObj(fl);
+  var ce=new THREE.Mesh(new THREE.PlaneGeometry(W4,D4),MATS.dark);
+  ce.rotation.x=Math.PI/2;ce.position.set(W4/2,HH,D4/2);addObj(ce);
+  box(W4,HH,0.3,wallM,W4/2,HH/2,0);
+  box(W4,HH,0.3,wallM,W4/2,HH/2,D4);
+  box(0.3,HH,D4,wallM,0,HH/2,D4/2);
+  box(0.3,HH,D4,wallM,W4,HH/2,D4/2);
+  // ряды старых стеллажей вдоль стен — атмосфера склада
+  var rackM=new THREE.MeshStandardMaterial({color:0x352c1e,roughness:0.95});
+  for(var rx=1.2;rx<W4-1;rx+=2.2){
+    var rack=new THREE.Mesh(new THREE.BoxGeometry(1.4,2.6,0.5),rackM);
+    rack.position.set(rx,1.3,0.5);addObj(rack);
+    solid(rx-0.7,0.25,rx+0.7,0.75);
+  }
+  SECRET2.monster=makeStellazhnik();
+  SECRET2.monster.position.set(W4/2,0,D4-2.6);
+  SECRET2.monster.rotation.y=Math.PI;
+  scene.add(SECRET2.monster);objs.push(SECRET2.monster);
+  P.x=W4/2;P.z=2.0;P.y=0;P.yaw=Math.PI;P.pitch=0;
+  camera.rotation.z=0;camera.up.set(0,1,0);
+}
+function startSecretRoom(){
+  SECRET2.stage=5;
+  startLoading(buildSecretRoom,function(){
+    PHASE='secret2';SECRET2.stage=6;SECRET2.t=0;
+    document.getElementById('black').style.transition='opacity 2.0s';
+    document.getElementById('black').style.opacity='0';
+    setTimeout(function(){showSub('Вы','Что это...',2.4);},2200);
+    setTimeout(function(){showMsg('Он сканирует, а не смотрит. Не шуми.',3.4);},5200);
+    setTimeout(triggerBetrayal,9500);
+  });
+}
+function sndBetrayHit(){
+  var a=getAC();if(!a)return;
+  var t0=a.currentTime;
+  var o=a.createOscillator(),g=a.createGain();
+  o.type='square';o.frequency.setValueAtTime(180,t0);
+  o.frequency.exponentialRampToValueAtTime(40,t0+0.3);
+  g.gain.setValueAtTime(0.5,t0);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.4);
+  o.connect(g);g.connect(a.destination);o.start(t0);o.stop(t0+0.4);
+  var nb=a.createBuffer(1,Math.floor(a.sampleRate*0.4),a.sampleRate),nd=nb.getChannelData(0);
+  for(var i=0;i<nd.length;i++){var x=i/a.sampleRate;nd[i]=(Math.random()*2-1)*Math.exp(-x*9);}
+  var ns=a.createBufferSource();ns.buffer=nb;
+  var ng=a.createGain();ng.gain.value=0.5;
+  ns.connect(ng);ng.connect(a.destination);ns.start(t0);
+}
+function triggerBetrayal(){
+  if(dead)return;
+  SECRET2.stage=7;
+  var ally2=makeAlly();
+  ally2.position.set(P.x,0,P.z+2.4);
+  ally2.rotation.y=Math.PI;
+  scene.add(ally2);objs.push(ally2);
+  showSub('Синий','Вот ты и попался.',3.0);
+  sayE('Вот ты и попался.');
+  if(typeof sndScare==='function')sndScare();
+  setTimeout(function(){
+    var d=document.getElementById('dmg');if(d)d.style.opacity='1';
+    sndBetrayHit();
+    if(typeof flash==='function')flash(0.9,300);
+    setTimeout(function(){
+      dead=true;
+      if(window.Coins&&window.Progress&&!Progress.isCompleteSync('part2_secret_reward'))
+        Coins.earn(200,'секретная концовка части II');
+      if(window.Progress){Progress.markComplete('part2_secret');Progress.markComplete('part2_secret_reward');}
+      document.getElementById('endtitle').style.color='#c02020';
+      document.getElementById('endtitle').textContent='ТЫ ПОПАЛСЯ';
+      document.getElementById('endsub').textContent='Синий не был тем, кем казался.';
+      updateEndScreen();
+      document.getElementById('endscreen').style.display='flex';
+    },900);
+  },3200);
 }
 
 // ---------- выбор ответа ----------
@@ -7840,6 +8132,7 @@ function actPress(){
     case 'house':     if(UH.on)uhAct(); else thAct(); break;
     case 'candle2':   cn2Act();     break;
     case 'basement':  bsAct();      break;
+    case 'secret2':   secret2Act(); break;
     // gas, dream1, bed, ride, truck, title, loading, dome — действий нет
   }
 }
@@ -7901,6 +8194,7 @@ function update(ts){
   if(PHASE==='throne')updateThrone(dt);
   if(PHASE==='candle2')updateCandleReturn(dt);
   if(PHASE==='basement')updateBasement(dt);
+  if(PHASE==='secret2')updateSecret2(dt);
   if(PHASE==='tube'){updateTube(dt);return;}
 
   var run=mRun||K['ShiftLeft']||K['ShiftRight'];
