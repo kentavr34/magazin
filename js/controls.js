@@ -240,6 +240,7 @@
     ui = document.createElement('div');
     ui.id = 'mg-set';
     ui.innerHTML = '<div class="in"><h2>Н А С Т Р О Й К И</h2>' +
+      '<h3>ИГРА</h3><div id="mg-game"></div>' +
       '<h3>УПРАВЛЕНИЕ</h3><div id="mg-keys"></div>' +
       '<h3>МЫШЬ И ГЕЙМПАД</h3><div id="mg-mouse"></div>' +
       '<h3>СЛОЖНОСТЬ</h3><div id="mg-diff"></div>' +
@@ -258,7 +259,61 @@
     return ui;
   }
 
+  /* Раздел "ИГРА": вернуться в меню, выбрать уже пройденную главу,
+     открыть магазин. Каждая кнопка появляется только там, где для
+     неё есть данные — в части II выбора главы пока нет (см. план),
+     а "в главное меню" работает всегда, это просто переход по ссылке. */
+  function renderGameSection() {
+    var box = ui.querySelector('#mg-game');
+    if (!box) return;
+    box.innerHTML = '';
+
+    if (global.Inventory) {
+      var shopRow = document.createElement('div'); shopRow.className = 'row';
+      shopRow.innerHTML = '<div class="n">Рюкзак и магазин</div>';
+      var shopBtn = document.createElement('button'); shopBtn.className = 'k';
+      shopBtn.textContent = 'ОТКРЫТЬ'; shopBtn.style.minWidth = '110px';
+      shopBtn.onclick = function () { C.closeSettings(); Inventory.open(); };
+      shopRow.appendChild(shopBtn);
+      box.appendChild(shopRow);
+    }
+
+    if (typeof global.jumpToFloor === 'function' && global.Progress) {
+      var maxFloor = Progress.getValueSync('p1_maxfloor') || 1;
+      var chRow = document.createElement('div'); chRow.className = 'row';
+      chRow.innerHTML = '<div class="n">Выбрать главу</div>';
+      chRow.appendChild(document.createElement('div'));
+      box.appendChild(chRow);
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;';
+      for (var f = 1; f <= maxFloor; f++) {
+        (function (n) {
+          var b = document.createElement('button'); b.className = 'k';
+          b.style.minWidth = '64px';
+          b.textContent = (n === 4 ? 'ЧЕРДАК' : 'ЭТАЖ ' + n);
+          b.onclick = function () { C.closeSettings(); global.jumpToFloor(n); };
+          wrap.appendChild(b);
+        })(f);
+      }
+      box.appendChild(wrap);
+      if (maxFloor < 4) {
+        var h = document.createElement('div'); h.className = 'hint';
+        h.textContent = 'Дальше открывается по мере прохождения.';
+        box.appendChild(h);
+      }
+    }
+
+    var menuRow = document.createElement('div'); menuRow.className = 'row';
+    menuRow.innerHTML = '<div class="n">Выйти в главное меню</div>';
+    var menuBtn = document.createElement('button'); menuBtn.className = 'k';
+    menuBtn.textContent = 'ВЫЙТИ'; menuBtn.style.minWidth = '110px';
+    menuBtn.onclick = function () { location.href = 'index.html'; };
+    menuRow.appendChild(menuBtn);
+    box.appendChild(menuRow);
+  }
+
   function render() {
+    renderGameSection();
     var keys = ui.querySelector('#mg-keys');
     keys.innerHTML = '';
     ACTIONS.forEach(function (a) {

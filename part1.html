@@ -187,6 +187,7 @@ body.cine #keys-ui,body.cine #msg{display:none!important;}
   <div class="row"><b>Кнопки справа</b> — бег / присесть / прыжок / фонарик</div>
   <button id="startbtn" onclick="startGame()">ВОЙТИ В МАГАЗИН</button>
   <button id="continuebtn" onclick="continueGame()" style="margin-top:10px;display:none;">ПРОДОЛЖИТЬ — ЭТАЖ <span id="continuefloor">2</span></button>
+  <button onclick="if(window.Inventory)Inventory.open();" style="margin-top:10px;">🎒 РЮКЗАК И МАГАЗИН</button>
   <div id="debugfloors" style="display:none;margin-top:14px;">
     <div style="font-size:10px;letter-spacing:2px;color:#8a7a3a;margin-bottom:6px;">ОТЛАДКА — ЛЮБОЙ ЭТАЖ</div>
   </div>
@@ -2973,6 +2974,27 @@ function refreshContinueButton(){
   if(n>1){document.getElementById('continuefloor').textContent=(n===4?'ЧЕРДАК':n);btn.style.display='';}
   else btn.style.display='none';
 }
+// Выбор главы — настоящий, не отладочный: пускает только на уже
+// достигнутый этаж (тот самый чек-пойнт из Этапа 7), доступен через
+// настройки (Escape) как из стартового экрана, так и прямо посреди
+// игры на любом этаже части I — это и есть "вернуться в меню
+// и выбрать главу", не выходя из части.
+function jumpToFloor(n){
+  var maxFloor=(window.Progress&&Progress.getValueSync('p1_maxfloor'))||1;
+  if(n>maxFloor)return;                     // эта глава ещё не открыта
+  if(!started){
+    document.getElementById('start').style.display='none';
+    unlockSpeech();getAC();started=true;startAmbient();
+    setTimeout(function(){BossMusic.prepare();},60);
+    setTimeout(function(){enterFloorAt(n,{messages:false});},400);
+  }else{
+    dead=false;                             // на случай перехода с экрана "вы погибли"
+    document.getElementById('endscreen').style.display='none';
+    enterFloorAt(n,{messages:false});
+    showMsg('Глава: '+(n===4?'ЧЕРДАК':'этаж '+n),2400);
+  }
+}
+
 // Режим отладки: ?unlockall=1 — сразу выбрать любой этаж, минуя
 // чек-пойнт. Реального прогресса не трогает, только запуск.
 var DEBUG_UNLOCK=/[?&]unlockall=1\b/.test(location.search);
