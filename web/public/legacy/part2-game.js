@@ -8045,7 +8045,16 @@ document.addEventListener('mousemove',jMov);document.addEventListener('mouseup',
 
 var lOn=false,lId=-1,llx=0,lly=0;
 function isJoy(x,y){var r=jz.getBoundingClientRect();return x>=r.left-24&&x<=r.right+24&&y>=r.top-24&&y<=r.bottom+24;}
-function isBtn(t){return t&&t.classList&&t.classList.contains('btn');}
+// Кроме круглых кнопок действий (.btn) сюда же попадают все остальные
+// плавающие кнопки интерфейса — раньше на них не было общей метки,
+// и палец, коснувшийся, например, "рюкзака" или "осмотра", ОДНОВРЕМЕННО
+// начинал поворот камеры (эти кнопки не входят в зону джойстика).
+function isBtn(t){
+  if(!t)return false;
+  if(t.classList&&(t.classList.contains('btn')||t.classList.contains('touchui')))return true;
+  var el=t.closest?t.closest('#inv-btn,#mg-gear,#adm-panel,#inv-panel,#mg-set'):null;
+  return !!el;
+}
 document.addEventListener('touchstart',function(e){
   getAC();
   for(var i=0;i<e.changedTouches.length;i++){
@@ -8059,8 +8068,12 @@ document.addEventListener('touchmove',function(e){
   if(!lOn||dead)return;
   for(var i=0;i<e.changedTouches.length;i++){
     var t=e.changedTouches[i];if(t.identifier!==lId)continue;
-    P.yaw-=(t.clientX-llx)*0.005;
-    P.pitch=Math.max(-0.6,Math.min(0.6,P.pitch-(t.clientY-lly)*0.004));
+    // Та же чувствительность/инверсия, что и у мыши (из настроек), только
+    // с поправкой — палец на экране физически двигается меньше, чем мышь.
+    var tsx=(window.CONTROLS?CONTROLS.mouseX():0.002)*2.5;
+    var tsy=(window.CONTROLS?CONTROLS.mouseY():0.002)*2.0;
+    P.yaw-=(t.clientX-llx)*tsx;
+    P.pitch=Math.max(-0.6,Math.min(0.6,P.pitch-(t.clientY-lly)*tsy));
     llx=t.clientX;lly=t.clientY;
   }
 },{passive:true});

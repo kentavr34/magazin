@@ -814,78 +814,96 @@ function buildTrap(cx,cz){
 
 function buildSofa(cx,cz){
   var H2=2.6;
+  // Каждый экземпляр — свой размер и число подушек (2/3/4), чтобы
+  // диваны на этаже не были одинаковыми штампами одного шаблона.
+  var sc=0.82+Math.random()*0.4;           // общий масштаб 0.82..1.22
+  var nCush=2+Math.floor(Math.random()*3); // 2, 3 или 4 подушки
+  var seatW=(0.55+nCush*0.16)*sc;
+  var hasArms=nCush<4;                     // длинный вариант — без подлокотников
   // Legs
   var legM=new THREE.MeshStandardMaterial({color:0x3a2208,roughness:0.9,metalness:0.1});
-  [[-0.35,-0.35],[0.35,-0.35],[-0.35,0.35],[0.35,0.35]].forEach(function(p){
-    box(0.06,0.16,0.06,legM,cx+p[0],0.08,cz+p[1]);
+  var lx=seatW/2-0.10,lz=0.35*sc;
+  [[-lx,-lz],[lx,-lz],[-lx,lz],[lx,lz]].forEach(function(p){
+    box(0.06*sc,0.16*sc,0.06*sc,legM,cx+p[0],0.08*sc,cz+p[1]);
   });
   // Seat base
-  box(0.85,0.22,0.55,MATS.sofaBody,cx,0.27,cz);
-  // Three cushions on seat
-  var cushW=0.26;
-  for(var ci=0;ci<3;ci++){
-    var coff=(ci-1)*0.285;
-    box(cushW,0.1,0.48,MATS.sofaCushion,cx+coff,0.43,cz);
+  box(seatW,0.22*sc,0.55*sc,MATS.sofaBody,cx,0.27*sc,cz);
+  // Подушки на сиденье — сколько решено в nCush
+  var cushW=(seatW-0.06)/nCush-0.03;
+  for(var ci=0;ci<nCush;ci++){
+    var coff=(ci-(nCush-1)/2)*(cushW+0.03);
+    box(cushW,0.1*sc,0.48*sc,MATS.sofaCushion,cx+coff,0.43*sc,cz);
     // Crease
-    box(0.02,0.11,0.42,new THREE.MeshStandardMaterial({color:0x5a3018,roughness:0.95}),cx+coff,0.43,cz);
+    box(0.02,0.11*sc,0.42*sc,new THREE.MeshStandardMaterial({color:0x5a3018,roughness:0.95}),cx+coff,0.43*sc,cz);
   }
   // Backrest
-  box(0.85,0.4,0.12,MATS.sofaBody,cx,0.58,cz+0.22);
-  box(0.82,0.36,0.1,MATS.sofaCushion,cx,0.58,cz+0.22);
-  // Armrests
-  box(0.12,0.32,0.55,MATS.sofaArm,cx-0.485,0.42,cz);
-  box(0.12,0.32,0.55,MATS.sofaArm,cx+0.485,0.42,cz);
+  box(seatW,0.4*sc,0.12*sc,MATS.sofaBody,cx,0.58*sc,cz+0.22*sc);
+  box(seatW-0.03,0.36*sc,0.1*sc,MATS.sofaCushion,cx,0.58*sc,cz+0.22*sc);
+  // Armrests — у длинного варианта их нет, сиденье читается как лавка
+  if(hasArms){
+    box(0.12*sc,0.32*sc,0.55*sc,MATS.sofaArm,cx-seatW/2-0.06,0.42*sc,cz);
+    box(0.12*sc,0.32*sc,0.55*sc,MATS.sofaArm,cx+seatW/2+0.06,0.42*sc,cz);
+  }
   // Broken springs sticking out bottom
   for(var si2=0;si2<4;si2++){
-    var soff=(si2-1.5)*0.18;
-    var sg=new THREE.TorusGeometry(0.028,0.006,6,8);
+    var soff=(si2-1.5)*0.18*sc;
+    var sg=new THREE.TorusGeometry(0.028*sc,0.006*sc,6,8);
     var sm=new THREE.Mesh(sg,MATS.sofaSpring);
-    sm.position.set(cx+soff,0.05,cz-0.1);sm.rotation.x=Math.PI/2;addObj(sm);
-    box(0.012,0.1,0.012,MATS.sofaSpring,cx+soff,0.1,cz-0.1);
+    sm.position.set(cx+soff,0.05*sc,cz-0.1*sc);sm.rotation.x=Math.PI/2;addObj(sm);
+    box(0.012,0.1*sc,0.012,MATS.sofaSpring,cx+soff,0.1*sc,cz-0.1*sc);
   }
   // Torn fabric detail
   var tearM=new THREE.MeshStandardMaterial({color:0x4a2810,roughness:1});
-  box(0.08,0.06,0.02,tearM,cx+0.2,0.35,cz-0.25);
-  box(0.05,0.08,0.02,tearM,cx-0.25,0.38,cz-0.25);
+  box(0.08,0.06,0.02,tearM,cx+0.2*sc,0.35*sc,cz-0.25*sc);
+  box(0.05,0.08,0.02,tearM,cx-0.25*sc,0.38*sc,cz-0.25*sc);
 }
 
 function buildBed(cx,cz){
+  // Каждая кровать — свой размер (односпальная/двуспальная) и число
+  // подушек, чтобы кровати на этаже не были одинаковыми штампами.
+  var sc=0.85+Math.random()*0.35;     // общий масштаб 0.85..1.20
+  var nPillow=1+Math.floor(Math.random()*2); // 1 или 2 подушки
   // Frame
   var frameM=MATS.bedFrame;
   // Side rails
-  box(0.08,0.12,0.85,frameM,cx-0.42,0.22,cz);
-  box(0.08,0.12,0.85,frameM,cx+0.42,0.22,cz);
+  box(0.08,0.12,0.85*sc,frameM,cx-0.42*sc,0.22*sc,cz);
+  box(0.08,0.12,0.85*sc,frameM,cx+0.42*sc,0.22*sc,cz);
   // End rails
-  box(0.88,0.08,0.08,frameM,cx,0.22,cz-0.42);
-  box(0.88,0.08,0.08,frameM,cx,0.22,cz+0.42);
+  box(0.88*sc,0.08,0.08,frameM,cx,0.22*sc,cz-0.42*sc);
+  box(0.88*sc,0.08,0.08,frameM,cx,0.22*sc,cz+0.42*sc);
   // Legs
   var legM=new THREE.MeshStandardMaterial({color:0x25233a,roughness:0.8,metalness:0.3});
   [[-0.42,-0.42],[0.42,-0.42],[-0.42,0.42],[0.42,0.42]].forEach(function(p){
-    box(0.07,0.18,0.07,legM,cx+p[0],0.09,cz+p[1]);
+    box(0.07,0.18*sc,0.07,legM,cx+p[0]*sc,0.09*sc,cz+p[1]*sc);
   });
   // Mattress
-  box(0.82,0.14,0.82,MATS.bedMatt,cx,0.35,cz);
+  box(0.82*sc,0.14*sc,0.82*sc,MATS.bedMatt,cx,0.35*sc,cz);
   // Mattress tufts
   for(var ti=0;ti<3;ti++)for(var tj=0;tj<2;tj++){
     var bm2=new THREE.MeshStandardMaterial({color:0xb8b5b0,roughness:0.9});
-    box(0.04,0.04,0.04,bm2,cx-0.25+ti*0.25,0.43,cz-0.18+tj*0.36);
+    box(0.04,0.04,0.04,bm2,cx+(-0.25+ti*0.25)*sc,0.43*sc,cz+(-0.18+tj*0.36)*sc);
   }
-  // Pillow
-  box(0.38,0.08,0.28,MATS.bedPillow,cx-0.2,0.47,cz-0.26);
+  // Подушки — 1 (по центру) или 2 (по бокам)
+  if(nPillow===1){
+    box(0.4*sc,0.08*sc,0.28*sc,MATS.bedPillow,cx,0.47*sc,cz-0.26*sc);
+  }else{
+    box(0.34*sc,0.08*sc,0.26*sc,MATS.bedPillow,cx-0.19*sc,0.47*sc,cz-0.26*sc);
+    box(0.34*sc,0.08*sc,0.26*sc,MATS.bedPillow,cx+0.19*sc,0.47*sc,cz-0.26*sc);
+  }
   // След на матрасе — неправильная форма пятна, не плоский прямоугольник
-  var stainMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.4),MATS.bloodMat);
+  var stainMesh=new THREE.Mesh(new THREE.PlaneGeometry(0.4*sc,0.4*sc),MATS.bloodMat);
   stainMesh.rotation.x=-Math.PI/2;stainMesh.rotation.z=Math.random()*6.283;
-  stainMesh.position.set(cx+0.12,0.435,cz+0.12);
+  stainMesh.position.set(cx+0.12*sc,0.435*sc,cz+0.12*sc);
   addObj(stainMesh);
   stainMesh.castShadow=false;   // decal тоньше листа бумаги — своей тени не бросает
   // Headboard
-  box(0.88,0.55,0.08,MATS.bedHead,cx,0.63,cz-0.44);
+  box(0.88*sc,0.55*sc,0.08,MATS.bedHead,cx,0.63*sc,cz-0.44*sc);
   // Headboard bars
   var barM=new THREE.MeshStandardMaterial({color:0x1e1c2e,roughness:0.8,metalness:0.2});
-  for(var bi=0;bi<5;bi++){box(0.06,0.45,0.06,barM,cx-0.32+bi*0.16,0.58,cz-0.44);}
+  for(var bi=0;bi<5;bi++){box(0.06,0.45*sc,0.06,barM,cx+(-0.32+bi*0.16)*sc,0.58*sc,cz-0.44*sc);}
   // Sheets hanging off side
   var sheetM=new THREE.MeshStandardMaterial({color:0xc8c4be,roughness:0.95,side:THREE.DoubleSide});
-  box(0.02,0.28,0.6,sheetM,cx+0.45,0.22,cz);
+  box(0.02,0.28*sc,0.6*sc,sheetM,cx+0.45*sc,0.22*sc,cz);
 }
 
 // ============================================================
@@ -1021,9 +1039,23 @@ jz.addEventListener('touchstart',jStart,{passive:true});jz.addEventListener('tou
 
 var lOn=false,lId=-1,llx=0,lly=0;
 function isJoy(x,y){var r=jz.getBoundingClientRect();return x>=r.left-24&&x<=r.right+24&&y>=r.top-24&&y<=r.bottom+24;}
-function isBtn(x,y){return x>window.innerWidth-270&&y>window.innerHeight-190;}
-document.addEventListener('touchstart',function(e){unlockSpeech();getAC();if(lOn)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(isJoy(t.clientX,t.clientY)||isBtn(t.clientX,t.clientY))continue;lOn=true;lId=t.identifier;llx=t.clientX;lly=t.clientY;break;}},{passive:true});
-document.addEventListener('touchmove',function(e){if(!lOn||dead||HG.active)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(t.identifier!==lId)continue;P.yaw-=(t.clientX-llx)*0.005;P.pitch=Math.max(-0.5,Math.min(0.5,P.pitch-(t.clientY-lly)*0.004));llx=t.clientX;lly=t.clientY;}},{passive:true});
+// Кроме нижнего правого кластера кнопок (координатная проверка —
+// так было всегда), сюда же попадают все остальные плавающие кнопки
+// интерфейса (осмотр фонарика, рюкзак, шестерёнка настроек) и открытые
+// панели — иначе палец, коснувшийся такой кнопки, ОДНОВРЕМЕННО ещё и
+// поворачивал камеру, потому что эти элементы не входят в зону джойстика.
+function isBtn(x,y,el){
+  if(x>window.innerWidth-270&&y>window.innerHeight-190)return true;
+  if(el&&el.closest&&el.closest('#fl-inspect-btn,#inv-btn,#mg-gear,#adm-panel,#inv-panel,#mg-set'))return true;
+  return false;
+}
+document.addEventListener('touchstart',function(e){unlockSpeech();getAC();if(lOn)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(isJoy(t.clientX,t.clientY)||isBtn(t.clientX,t.clientY,t.target))continue;lOn=true;lId=t.identifier;llx=t.clientX;lly=t.clientY;break;}},{passive:true});
+document.addEventListener('touchmove',function(e){if(!lOn||dead||HG.active)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(t.identifier!==lId)continue;
+  // Та же чувствительность/инверсия, что и у мыши (из настроек), только
+  // с поправкой — палец на экране физически двигается меньше, чем мышь.
+  var tsx=(window.CONTROLS?CONTROLS.mouseX():0.002)*2.5;
+  var tsy=(window.CONTROLS?CONTROLS.mouseY():0.002)*2.0;
+  P.yaw-=(t.clientX-llx)*tsx;P.pitch=Math.max(-0.5,Math.min(0.5,P.pitch-(t.clientY-lly)*tsy));llx=t.clientX;lly=t.clientY;}},{passive:true});
 document.addEventListener('touchend',function(e){for(var i=0;i<e.changedTouches.length;i++){if(e.changedTouches[i].identifier===lId){lOn=false;break;}}});
 
 var mRun=false,mCrouch=false,mJump=false;
