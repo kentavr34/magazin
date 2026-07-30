@@ -455,11 +455,24 @@ function setPrompt(t,on){
   var el=document.getElementById('prompt');el.textContent=t||'';
   el.style.opacity=(t&&on)?'1':'0';
 }
+// На телефоне (и в APK-обёртке на WebView) звук, включая синтез речи,
+// заблокирован до первого касания/клика/клавиши — без этого "прогрева"
+// speechSynthesis.speak() в части II никогда не звучал, хотя субтитры
+// показывались всегда (это обычный текст, автовоспроизведение его не трогает).
+var speechOK=false;
+function unlockSpeech(){
+  if(speechOK||!window.speechSynthesis)return;
+  speechOK=true;
+  try{var u=new SpeechSynthesisUtterance('');u.volume=0;speechSynthesis.speak(u);}catch(e){}
+}
 function say(txt,rate,pitch){
   if(!window.speechSynthesis)return;
   try{
     var u=new SpeechSynthesisUtterance(txt);u.lang='ru-RU';
     u.rate=rate||0.95;u.pitch=pitch||1.0;
+    var voices=speechSynthesis.getVoices();
+    var ru=voices.find(function(v){return v.lang.indexOf('ru')>=0;});
+    if(ru)u.voice=ru;
     speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -4173,11 +4186,22 @@ var UV={
   fireT:0, reloadT:0, flash:null, cool:0
 };
 var OPEN_TIME=1.15;    // столько держать, чтобы раскрылся
+var _uvBoltTmp=new THREE.Vector3();   // переиспользуемый вектор для молний скина "Терминатор"
+
+// Скин "ТЕРМИНАТОР" (js/inventory.js, магазин, 50 монет) — тот же
+// пистолет, но корпус хромированный вместо матово-чёрного, плюс
+// красное кольцо-акцент и электрические дуги молний между лепестками
+// и линзой, которые оживают при зарядке/выстреле (updateUV).
+var UV_SKIN=(function(){try{return localStorage.getItem('magazin_uv_skin')==='terminator';}catch(e){return false;}})();
 
 function makeUVGun(){
   var g=new THREE.Group();
-  var black=new THREE.MeshStandardMaterial({color:0x141416,roughness:0.42,metalness:0.72});
-  var grip=new THREE.MeshStandardMaterial({color:0x0e0e10,roughness:0.9,metalness:0.15});
+  var black=UV_SKIN?
+    new THREE.MeshStandardMaterial({color:0x8a8f9a,roughness:0.18,metalness:0.95}):
+    new THREE.MeshStandardMaterial({color:0x141416,roughness:0.42,metalness:0.72});
+  var grip=UV_SKIN?
+    new THREE.MeshStandardMaterial({color:0x1a1a1e,roughness:0.6,metalness:0.4}):
+    new THREE.MeshStandardMaterial({color:0x0e0e10,roughness:0.9,metalness:0.15});
   // рукоять
   var h=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.20,0.11),grip);
   h.position.set(0,-0.13,0.06);h.rotation.x=0.22;g.add(h);
@@ -4190,6 +4214,14 @@ function makeUVGun(){
   // спусковой крючок
   var tr=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.06,0.02),black);
   tr.position.set(0,-0.06,0.02);g.add(tr);
+  if(UV_SKIN){
+    // красное кольцо-акцент — собранный, "терминаторский" силуэт даже
+    // когда пистолет не заряжен
+    var accent=new THREE.Mesh(new THREE.TorusGeometry(0.053,0.006,6,16),
+      new THREE.MeshStandardMaterial({color:0xff2020,emissive:0xa00000,
+        emissiveIntensity:1.1,roughness:0.3,metalness:0.6}));
+    accent.rotation.x=Math.PI/2;accent.position.z=-0.06;g.add(accent);
+  }
   // ЗОНТ: пять лепестков, на каждом своя лампа
   UV.petals=[];UV.bulbs=[];
   for(var i=0;i<5;i++){
@@ -4209,6 +4241,21 @@ function makeUVGun(){
   var lens=new THREE.Mesh(new THREE.CircleGeometry(0.040,16),
     new THREE.MeshStandardMaterial({color:0x9a7aff,emissive:0x6a3aff,emissiveIntensity:0.8}));
   lens.position.z=-0.19;g.add(lens);g.userData.lens=lens;
+  if(UV_SKIN){
+    // дуги молний: ломаная линия от каждого лепестка к линзе, форма
+    // трясётся каждый кадр в updateUV() — дешёвая, но убедительная
+    // электрическая дуга без единого внешнего ассета.
+    UV.bolts=[];
+    var boltMat=new THREE.LineBasicMaterial({color:0xcfe8ff,transparent:true,
+      opacity:0,blending:THREE.AdditiveBlending});
+    UV.petals.forEach(function(){
+      var geo=new THREE.BufferGeometry();
+      geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(5*3),3));
+      var line=new THREE.Line(geo,boltMat.clone());
+      line.frustumCulled=false;
+      g.add(line);UV.bolts.push(line);
+    });
+  }
   g.position.set(0.30,-0.30,-0.52);
   g.rotation.set(0.04,-0.10,0.0);
   g.visible=false;
@@ -4308,6 +4355,33 @@ function updateUV(dt){
   });
   if(UV.view.userData.lens)
     UV.view.userData.lens.material.emissiveIntensity=0.8+UV.open*3+(UV.state==='fire'?18:0);
+
+  // молнии скина "Терминатор": ломаные линии от заряженных лепестков
+  // к линзе, форма трясётся каждый кадр — дешёвая имитация дугового разряда
+  if(UV.bolts&&UV.bolts.length){
+    var lensPos=UV.view.userData.lens.position;
+    var firing=(UV.state==='fire');
+    var active=UV.open>0.15||firing;
+    UV.bolts.forEach(function(line,i){
+      var lit=(i<UV.loaded);
+      if(!active||!lit){line.material.opacity=0;return;}
+      var bulbPos=_uvBoltTmp;
+      UV.bulbs[i].getWorldPosition(bulbPos);
+      UV.view.worldToLocal(bulbPos);
+      var amp=(firing?0.045:0.016)*(0.4+UV.open*0.6);
+      var pos=line.geometry.attributes.position.array;
+      for(var k=0;k<5;k++){
+        var t=k/4;
+        var jx=(k>0&&k<4)?(Math.random()-0.5)*amp:0;
+        var jy=(k>0&&k<4)?(Math.random()-0.5)*amp:0;
+        pos[k*3]  =bulbPos.x+(lensPos.x-bulbPos.x)*t+jx;
+        pos[k*3+1]=bulbPos.y+(lensPos.y-bulbPos.y)*t+jy;
+        pos[k*3+2]=bulbPos.z+(lensPos.z-bulbPos.z)*t;
+      }
+      line.geometry.attributes.position.needsUpdate=true;
+      line.material.opacity=Math.min(1,(firing?0.9:0.35+UV.open*0.35)*(0.7+Math.random()*0.3));
+    });
+  }
 
   // свет от пистолета: слабый при раскрытии, мощный в момент выстрела
   var li=UV.open*1.4;
@@ -7788,6 +7862,7 @@ function armMenuAudio(){
     document.removeEventListener('pointerdown',kick,true);
     document.removeEventListener('touchstart',kick,true);
     document.removeEventListener('keydown',kick,true);
+    unlockSpeech();
     var a=getAC();
     if(!a)return;
     function go(){
@@ -7807,7 +7882,7 @@ function armMenuAudio(){
 function menuNewGame(){
   MenuMusic.stop();
   document.getElementById('start').style.display='none';
-  getAC();started=true;lastT=performance.now();
+  unlockSpeech();getAC();started=true;lastT=performance.now();
   setTimeout(function(){Music.prepare();SearchMusic.prepare();HammerMusic.prepare();
                         DomeMusic.prepare();},80);
   showMsg('Обычный день. Обычная смена.',3.2);
@@ -7818,7 +7893,7 @@ function menuContinue(){
   if(!SAVE.has)return;
   MenuMusic.stop();
   document.getElementById('start').style.display='none';
-  getAC();started=true;lastT=performance.now();
+  unlockSpeech();getAC();started=true;lastT=performance.now();
   setTimeout(function(){Music.prepare();SearchMusic.prepare();HammerMusic.prepare();
                         DomeMusic.prepare();},80);
   loadSave();

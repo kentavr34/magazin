@@ -35,6 +35,55 @@
   ];
   var byId = {}; SKINS.forEach(function (s) { byId[s.id] = s; });
 
+  /* УФ-пистолет живёт только в part2.html и читает этот же ключ localStorage
+     напрямую (part2.html не подключает inventory.js) — владение, как обычно,
+     через Progress, чтобы пережить переустановку/смену устройства. */
+  var LS_UV = 'magazin_uv_skin';
+  var UV_SKINS = [
+    { id: 'default', name: 'Обычный', price: 0 },
+    { id: 'terminator', name: 'Терминатор (хром + молнии)', price: 50 }
+  ];
+  var uvById = {}; UV_SKINS.forEach(function (s) { uvById[s.id] = s; });
+  function uvOwned(id) {
+    if (id === 'default') return true;
+    return !!(global.Progress && Progress.isCompleteSync('shop_uv_' + id));
+  }
+  function currentUvSkinId() {
+    try { return localStorage.getItem(LS_UV) || 'default'; } catch (e) { return 'default'; }
+  }
+  function setCurrentUvSkin(id) {
+    try { localStorage.setItem(LS_UV, id); } catch (e) { }
+  }
+  function wearUv(id) { setCurrentUvSkin(id); renderUvShop(); }
+  function buyUv(s) {
+    if (!global.Coins || !Coins.spend(s.price, s.name)) return;
+    if (global.Progress) Progress.markComplete('shop_uv_' + s.id);
+    wearUv(s.id);
+  }
+  function renderUvShop() {
+    if (!panel) return;
+    var el = panel.querySelector('#inv-uvshop');
+    if (!el) return;
+    el.innerHTML = '';
+    var cur = currentUvSkinId();
+    UV_SKINS.forEach(function (s) {
+      var row = document.createElement('div'); row.className = 'shopitem';
+      var n = document.createElement('div'); n.className = 'n';
+      n.textContent = s.name + (s.price ? ' — 🪙 ' + s.price : ' — бесплатно');
+      var b = document.createElement('button'); b.className = 'k';
+      var isOwned = uvOwned(s.id), isActive = cur === s.id;
+      if (isActive) { b.textContent = 'НАДЕТО'; b.className += ' active'; }
+      else if (isOwned) { b.textContent = 'НАДЕТЬ'; b.className += ' owned'; b.onclick = function () { wearUv(s.id); }; }
+      else {
+        b.textContent = 'КУПИТЬ';
+        if (!global.Coins || Coins.get() < s.price) b.setAttribute('disabled', 'true');
+        b.onclick = function () { buyUv(s); };
+      }
+      row.appendChild(n); row.appendChild(b);
+      el.appendChild(row);
+    });
+  }
+
   var Inv = {};
 
   function owned(id) {
@@ -113,6 +162,7 @@
       '<h3>МАГАЗИН — ЦВЕТ ЛУЧА ФОНАРИКА</h3><div id="inv-shop"></div>' +
       '<div class="row" style="font-size:10px;color:#5a5560;margin-top:10px;">' +
       'Только внешний вид — на игру и сложность не влияет.</div>' +
+      '<h3>МАГАЗИН — СКИН УФ-ПИСТОЛЕТА (часть II)</h3><div id="inv-uvshop"></div>' +
       '<h3>МАГАЗИН — СПЕЦВОЗМОЖНОСТИ</h3><div id="inv-admin"></div>' +
       '<button class="btn" id="inv-close">ЗАКРЫТЬ</button></div>';
     document.body.appendChild(panel);
@@ -199,6 +249,7 @@
     panel.querySelector('#inv-coins').textContent = '🪙 ' + (global.Coins ? Coins.get() : 0);
     renderKeys();
     renderShop();
+    renderUvShop();
     renderAdmin();
   }
 
