@@ -556,7 +556,7 @@ if(window.DETAIL)DETAIL.upgradeMaterials(MATS);
 var MAPS={};
 MAPS[1]=[
  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
- [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+ [1,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
  [1,0,5,0,5,0,0,5,0,5,0,0,5,0,5,0,0,5,0,1],
  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
  [1,0,6,1,1,6,0,1,1,0,0,1,1,0,6,1,1,6,0,1],
@@ -694,7 +694,7 @@ function buildFloor(floorNum){
       var v=map[z][x];
       var cx=x+0.5,cz=z+0.5;
 
-      if(v===0||v===2||v===5||v===6||v===9||v===14){
+      if(v===0||v===2||v===5||v===6||v===9||v===14||v===15){
         // Floor tile
         box(1,0.02,1,floorMat,cx,0,cz);
         // Ceiling
@@ -742,6 +742,10 @@ function buildFloor(floorNum){
 
       if(v===6){// bed
         buildBed(cx,cz);
+      }
+
+      if(v===15){// wardrobe — новый тип мебели, демонстрация более объёмной геометрии
+        buildWardrobe(cx,cz);
       }
 
       if(v===9){// fake exit door
@@ -904,6 +908,62 @@ function buildBed(cx,cz){
   // Sheets hanging off side
   var sheetM=new THREE.MeshStandardMaterial({color:0xc8c4be,roughness:0.95,side:THREE.DoubleSide});
   box(0.02,0.28*sc,0.6*sc,sheetM,cx+0.45*sc,0.22*sc,cz);
+}
+
+// Шкаф — не единая коробка с одним цветом, а собранный из деталей
+// предмет: врезанная (не плоская) дверная филёнка, фаска на карнизе
+// вместо острого ребра, цилиндрические ручки и ножки вместо коробок,
+// одна дверь иногда приоткрыта и показывает тёмное нутро — вместе это
+// не даёт силуэту читаться как плоская коробка при повороте камеры.
+function buildWardrobe(cx,cz){
+  var sc=0.9+Math.random()*0.3;              // масштаб 0.9..1.2
+  var w=0.9*sc,h=1.9*sc,d=0.55*sc;
+  var woodM=new THREE.MeshStandardMaterial({color:0x5a4020,roughness:0.85,map:TEX.wood,bumpMap:TEX.wood,bumpScale:0.05});
+  var darkM=new THREE.MeshStandardMaterial({color:0x14100a,roughness:0.95});
+  var metalM=new THREE.MeshStandardMaterial({color:0x2a2a2a,roughness:0.4,metalness:0.7});
+  // корпус
+  box(w,h,d,woodM,cx,h/2,cz);
+  // тёмное нутро — видно за приоткрытой дверью, даёт ощущение объёма,
+  // а не плоской коробки
+  box(w-0.06,h-0.10,d-0.10,darkM,cx,h/2,cz-0.02);
+  // карниз сверху — выступает и снят фаской по углам вместо острого ребра
+  box(w+0.06,0.06*sc,d+0.06,woodM,cx,h+0.03*sc,cz);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(s){
+    var bv=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.06*sc,0.08),woodM);
+    bv.position.set(cx+s[0]*(w/2-0.02),h+0.03*sc,cz+s[1]*(d/2-0.02));
+    bv.rotation.y=Math.PI/4;bv.castShadow=true;bv.receiveShadow=true;addObj(bv);
+  });
+  // две дверные панели — каждая: рама + врезанная (утопленная по z) филёнка
+  var doorW=w/2-0.02, doorH=h-0.14;
+  [-1,1].forEach(function(side,i){
+    var ajar=(i===0&&Math.random()<0.4);           // одна дверь иногда приоткрыта
+    var group=new THREE.Group();
+    group.position.set(cx+side*(doorW/2+0.01),h/2,cz+d/2+0.01);
+    if(ajar)group.rotation.y=side*0.55;
+    function part(pw,ph,pd,mat,ox,oy,oz){
+      var m=new THREE.Mesh(new THREE.BoxGeometry(pw,ph,pd),mat);
+      m.position.set(ox,oy,oz);m.castShadow=true;m.receiveShadow=true;group.add(m);
+    }
+    part(doorW,doorH,0.03,woodM,0,0,0);                          // рама двери
+    part(doorW-0.10,doorH-0.16,0.02,darkM,0,0,-0.012);            // тень филёнки
+    part(doorW-0.14,doorH-0.22,0.018,woodM,0,0,-0.004);           // сама филёнка, чуть утоплена
+    var handle=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.14*sc,8),metalM);
+    handle.rotation.z=Math.PI/2;
+    handle.position.set(-side*(doorW/2-0.06),0,0.035);
+    handle.castShadow=true;group.add(handle);
+    addObj(group);
+  });
+  // ножки — конические, а не прямоугольные обрубки
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(p){
+    var leg=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.035,0.12*sc,8),metalM);
+    leg.position.set(cx+p[0]*(w/2-0.08),0.06*sc,cz+p[1]*(d/2-0.08));
+    leg.castShadow=true;leg.receiveShadow=true;addObj(leg);
+  });
+  // царапины/потёртости на фасаде
+  var scratchM=new THREE.MeshStandardMaterial({color:0x0c0906,roughness:1,transparent:true,opacity:0.5});
+  for(var k=0;k<3;k++){
+    box(0.02,0.3*sc,0.005,scratchM,cx+(Math.random()-0.5)*w*0.6,h*(0.3+Math.random()*0.4),cz+d/2+0.02);
+  }
 }
 
 // ============================================================
