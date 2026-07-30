@@ -4183,7 +4183,8 @@ var UV={
   open:0,              // 0 закрыт, 1 раскрыт полностью
   holding:false, state:'idle',   // idle|open|closing|fire|reload
   loaded:5, cap:5, spare:0,
-  fireT:0, reloadT:0, flash:null, cool:0
+  fireT:0, reloadT:0, flash:null, cool:0,
+  inspect:false, inspectT:0     // режим осмотра купленного скина
 };
 var OPEN_TIME=1.15;    // столько держать, чтобы раскрылся
 var _uvBoltTmp=new THREE.Vector3();   // переиспользуемый вектор для молний скина "Терминатор"
@@ -4247,6 +4248,23 @@ function makeUVGun(){
       var led=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.006,0.05),ledMat);
       led.position.set(-0.028+li*0.028,-0.005,0.14);g.add(led);
     }
+    // зубцы планки Пикатинни сверху — силуэт "тактического" оружия с фото
+    var railMat=new THREE.MeshStandardMaterial({color:0x0e0a14,roughness:0.4,metalness:0.7});
+    for(var ri=0;ri<6;ri++){
+      var tooth=new THREE.Mesh(new THREE.BoxGeometry(0.008,0.010,0.022),railMat);
+      tooth.position.set(0,0.030,0.10-ri*0.026);g.add(tooth);
+    }
+    // светящаяся "плазменная" сфера сбоку — как на фото, у спускового крючка
+    var orb=new THREE.Mesh(new THREE.SphereGeometry(0.024,12,10),
+      new THREE.MeshStandardMaterial({color:0xc86bff,emissive:0xb04fff,
+        emissiveIntensity:1.4,roughness:0.15,transparent:true,opacity:0.85}));
+    orb.position.set(0.032,-0.02,0.05);g.add(orb);UV.eliteOrb=orb;
+    // большой передний рефлектор за лепестками — виден и когда зонт закрыт,
+    // имитирует крупную светящуюся "линзу" с фото
+    var reflector=new THREE.Mesh(new THREE.CircleGeometry(0.05,20),
+      new THREE.MeshStandardMaterial({color:0x2a1840,emissive:0x6a2fb0,
+        emissiveIntensity:0.35,roughness:0.3,side:THREE.DoubleSide}));
+    reflector.position.z=-0.155;g.add(reflector);UV.eliteReflector=reflector;
   }
   // ЗОНТ: пять лепестков, на каждом своя лампа
   UV.petals=[];UV.bulbs=[];
@@ -4316,7 +4334,7 @@ function initUV(){
 
 // ---------- удержание кнопки ----------
 function uvDown(){
-  if(!UV.has||UV.state==='reload'||UV.cool>0)return;
+  if(!UV.has||UV.state==='reload'||UV.cool>0||UV.inspect)return;
   if(UV.loaded<=0){showMsg('Лампа перегорела. Перезарядка',2.0);sndBeep(180);return;}
   UV.holding=true;UV.state='open';
   sndUVCharge();
@@ -4351,6 +4369,8 @@ function uvReload(){
 function uvHUD(){
   var el=document.getElementById('uvhud');
   if(!el)return;
+  var btn=document.getElementById('uv-inspect-btn');
+  if(btn)btn.style.display=UV.has?'block':'none';
   if(!UV.has){el.style.display='none';return;}
   el.style.display='block';
   var s='';
@@ -4359,13 +4379,32 @@ function uvHUD(){
                '<div class="sp">запас: '+UV.spare+'</div>';
 }
 
+// Осмотр оружия: пистолет выезжает в центр экрана, увеличивается и
+// крутится, все эффекты скина идут на максимум — чисто показать
+// красоту купленного скина, на геймплей не влияет.
+function uvInspectToggle(){
+  if(!UV.has)return;
+  UV.inspect=!UV.inspect;
+  var btn=document.getElementById('uv-inspect-btn');
+  if(btn)btn.classList.toggle('on',UV.inspect);
+  if(UV.inspect){
+    UV.inspectT=0;UV.holding=false;
+    if(UV.state==='fire')UV.state='idle';
+  }
+}
+
 function updateUV(dt){
   if(!UV.view)return;
   UV.view.visible=UV.has;
   if(!UV.has){if(UV.lamp)UV.lamp.intensity=0;return;}
   if(UV.cool>0)UV.cool-=dt;
 
-  if(UV.state==='open'&&UV.holding)UV.open=Math.min(1,UV.open+dt/OPEN_TIME);
+  if(UV.inspect){
+    // осмотр: не идёт обычная логика заряда/выстрела — зонт просто
+    // держится раскрытым, чтобы было видно все детали скина
+    UV.inspectT+=dt;
+    UV.open=Math.min(1,UV.open+dt*1.8);
+  }else if(UV.state==='open'&&UV.holding)UV.open=Math.min(1,UV.open+dt/OPEN_TIME);
   else if(UV.state==='closing'){
     UV.open=Math.max(0,UV.open-dt*2.2);
     if(UV.open<=0)UV.state='idle';
@@ -4391,22 +4430,22 @@ function updateUV(dt){
     pet.rotation.z=0;
     pet.rotation.x=Math.sin(a)*UV.open*0.55;
     pet.rotation.y=-Math.cos(a)*UV.open*0.55;
-    var lit=(i<UV.loaded);
-    var glow=lit?(0.5+UV.open*5.5+(UV.state==='fire'?14:0)):0.02;
+    var lit=(i<UV.loaded)||UV.inspect;
+    var glow=lit?(0.5+UV.open*5.5+((UV.state==='fire'||UV.inspect)?14:0)):0.02;
     UV.bulbs[i].material.emissiveIntensity=glow;
     UV.bulbs[i].material.color.setHex(lit?(UV.bulbLitColor||0xbfa8ff):0x3a3540);
   });
   if(UV.view.userData.lens)
-    UV.view.userData.lens.material.emissiveIntensity=0.8+UV.open*3+(UV.state==='fire'?18:0);
+    UV.view.userData.lens.material.emissiveIntensity=0.8+UV.open*3+((UV.state==='fire'||UV.inspect)?18:0);
 
   // молнии скина "Терминатор": ломаные линии от заряженных лепестков
   // к линзе, форма трясётся каждый кадр — дешёвая имитация дугового разряда
   if(UV.bolts&&UV.bolts.length){
     var lensPos=UV.view.userData.lens.position;
-    var firing=(UV.state==='fire');
+    var firing=(UV.state==='fire')||UV.inspect;
     var active=UV.open>0.15||firing;
     UV.bolts.forEach(function(line,i){
-      var lit=(i<UV.loaded);
+      var lit=(i<UV.loaded)||UV.inspect;
       if(!active||!lit){line.material.opacity=0;return;}
       var bulbPos=_uvBoltTmp;
       UV.bulbs[i].getWorldPosition(bulbPos);
@@ -4430,7 +4469,7 @@ function updateUV(dt){
   // волна рядом дрожит — та же логика активности, что у молний,
   // просто другой рисунок эффекта.
   if(UV.holoRing&&UV.holoWave){
-    var eFiring=(UV.state==='fire');
+    var eFiring=(UV.state==='fire')||UV.inspect;
     var eActive=UV.open>0.15||eFiring;
     if(!eActive){
       UV.holoRing.material.opacity=0;UV.holoWave.material.opacity=0;
@@ -4450,16 +4489,31 @@ function updateUV(dt){
       UV.holoWave.material.opacity=Math.min(1,(eFiring?0.9:0.35+UV.open*0.35)*(0.7+Math.random()*0.3));
     }
   }
+  if(UV.eliteOrb){
+    var pulse=0.5+Math.sin(performance.now()*0.004)*0.5;
+    UV.eliteOrb.material.emissiveIntensity=1.0+pulse*0.8+(eFiring?1.2:0);
+  }
+  if(UV.eliteReflector)
+    UV.eliteReflector.material.emissiveIntensity=0.3+UV.open*1.2+(eFiring?1.5:0);
 
   // свет от пистолета: слабый при раскрытии, мощный в момент выстрела
   var li=UV.open*1.4;
   if(UV.state==='fire')li=16*Math.max(0,1-UV.fireT/0.35);
   UV.lamp.intensity=li;
 
-  // при перезарядке ствол уходит вниз
-  var rk=(UV.state==='reload')?Math.sin(Math.min(1,UV.reloadT/1.6)*Math.PI):0;
-  UV.view.position.set(0.30,-0.30-rk*0.16,-0.52+rk*0.05);
-  UV.view.rotation.set(0.04+rk*0.5,-0.10,rk*0.35);
+  if(UV.inspect){
+    // на экран, крупнее, крутится вокруг своей оси — витрина скина
+    var it=Math.min(1,UV.inspectT/0.5);
+    UV.view.position.set(0.30+(0-0.30)*it,-0.30+(-0.05-(-0.30))*it,-0.52+(-0.42-(-0.52))*it);
+    UV.view.rotation.set(0.04+(0-0.04)*it,-0.10+(0-(-0.10))*it+UV.inspectT*1.0,0);
+    UV.view.scale.setScalar(1+it*0.7);
+  }else{
+    UV.view.scale.setScalar(1);
+    // при перезарядке ствол уходит вниз
+    var rk=(UV.state==='reload')?Math.sin(Math.min(1,UV.reloadT/1.6)*Math.PI):0;
+    UV.view.position.set(0.30,-0.30-rk*0.16,-0.52+rk*0.05);
+    UV.view.rotation.set(0.04+rk*0.5,-0.10,rk*0.35);
+  }
 }
 
 // ---------- звуки ----------
