@@ -358,6 +358,15 @@ TEX.plaster=makeTex(function(g,s){
     grd.addColorStop(0,'rgba(60,52,40,0.30)');grd.addColorStop(1,'rgba(60,52,40,0)');
     g.fillStyle=grd;g.fillRect(wx,0,ww,wl);
   }
+  // РЖАВЫЕ ПОДТЁКИ у плинтуса — снизу вверх, короче и рыжéе сырости:
+  // так проступает металл каркаса за обвалившейся штукатуркой.
+  for(var r2=0;r2<6;r2++){
+    var rx=Math.random()*s,rw=2+Math.random()*4,rl=16+Math.random()*54;
+    var ry0=s-Math.random()*30;
+    var rg=g.createLinearGradient(rx,ry0,rx,ry0-rl);
+    rg.addColorStop(0,'rgba(140,70,26,0.34)');rg.addColorStop(1,'rgba(140,70,26,0)');
+    g.fillStyle=rg;g.fillRect(rx,ry0-rl,rw,rl);
+  }
   // ЦАРАПИНЫ — длинные, разной глубины
   for(var c=0;c<46;c++){
     var deep=Math.random()<0.35;
@@ -376,11 +385,32 @@ TEX.plaster=makeTex(function(g,s){
     g.stroke();
   }
 },2);
+// Мокрые пятна пола — отдельный холст с масками. Тот же рисунок,
+// который затемняет плитку тут же ниже, используется ещё раз как
+// карта шероховатости: тёмное пятно = блестит, как настоящая лужа,
+// а не просто закрашенный кружок без отражения.
+function makeWetMask(){
+  var c=document.createElement('canvas');c.width=c.height=256;
+  var g=c.getContext('2d');
+  g.fillStyle='#ffffff';g.fillRect(0,0,256,256);
+  var n=3+Math.floor(Math.random()*3);
+  for(var i=0;i<n;i++){
+    var x=Math.random()*256,y=Math.random()*256,r=16+Math.random()*44;
+    var grd=g.createRadialGradient(x,y,0,x,y,r);
+    grd.addColorStop(0,'rgba(15,15,15,0.88)');
+    grd.addColorStop(0.65,'rgba(15,15,15,0.40)');
+    grd.addColorStop(1,'rgba(15,15,15,0)');
+    g.fillStyle=grd;g.beginPath();g.arc(x,y,r,0,6.283);g.fill();
+  }
+  return c;
+}
+var wetMaskFloor=makeWetMask();
 // Гранитная плитка пола со швами
 TEX.tile=makeTex(function(g,s){
   g.fillStyle='#ffffff';g.fillRect(0,0,s,s);
   speckle(g,s,16000,90,88,84,0.40);
   blotch(g,s,14,'rgba(60,55,48,0.25)',20,70);
+  g.save();g.globalCompositeOperation='multiply';g.drawImage(wetMaskFloor,0,0,s,s);g.restore();
   g.strokeStyle='rgba(35,32,28,0.75)';g.lineWidth=4;   // швы
   g.strokeRect(0,0,s,s);g.beginPath();
   g.moveTo(s/2,0);g.lineTo(s/2,s);g.moveTo(0,s/2);g.lineTo(s,s/2);g.stroke();
@@ -434,6 +464,16 @@ skin(MATS.wallAttic,TEX.wood,0.05);
 skin(MATS.ceiling,TEX.plaster,0.02);
 skin(MATS.ceilAttic,TEX.wood,0.04);
 skin(MATS.floor,TEX.tile,0.03);
+// Мокрые пятна дают блеск: карта шероховатости из той же маски,
+// что затемняла плитку — тёмный кружок = ниже roughness = блестит,
+// как настоящая лужа, а не просто закрашенное пятно без отражения.
+(function(){
+  var wetRough=new THREE.CanvasTexture(wetMaskFloor);
+  wetRough.wrapS=wetRough.wrapT=THREE.RepeatWrapping;wetRough.repeat.set(3,3);
+  wetRough.encoding=THREE.LinearEncoding;   // карта данных, не цвета
+  MATS.floor.roughnessMap=wetRough;
+  MATS.floor.needsUpdate=true;
+})();
 skin(MATS.floorAttic,TEX.wood,0.05);
 skin(MATS.sofaBody,TEX.fabric,0.03);
 skin(MATS.sofaCushion,TEX.fabric,0.035);
