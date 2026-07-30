@@ -244,7 +244,12 @@ function initThree(){
   scene.add(ambientLight);
 
   // Flashlight — spotlight attached to camera
-  flashlight=new THREE.SpotLight(0xfff5e0,3.5,20,Math.PI/4,0.45,1.5);
+  // decay честнее прежнего (1.5→2, ближе к физическому), intensity
+  // поднята вместе с ним так, чтобы яркость на привычной дистанции
+  // 3 м осталась ТОЧНО той же (см. VISUALSTYLE.md, правило 4) —
+  // меняется не общая яркость, а то, насколько резко свет гаснет
+  // к краю и вдаль.
+  flashlight=new THREE.SpotLight(0xfff5e0,3.8,20,Math.PI/4,0.45,2.0);
   flashlight.castShadow=false;   // DETAIL включит настоящую тень, если качество позволяет
   camera.add(flashlight);
   flashlight.position.set(0,0,0);
