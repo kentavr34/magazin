@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Заброшенный магазин</title>
+<meta name="theme-color" content="#08080a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#08080a;color:#ded7c8;font-family:'Courier New',monospace;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:22px;overflow-x:hidden}
+#bg{position:fixed;inset:-10%;z-index:0;
+  background:radial-gradient(ellipse 60% 55% at 50% 40%,rgba(150,60,40,.15),rgba(0,0,0,0) 70%),
+             radial-gradient(ellipse 80% 70% at 50% 100%,rgba(40,30,60,.35),rgba(0,0,0,0) 70%);
+  animation:br 9s ease-in-out infinite}
+@keyframes br{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}
+.wrap{position:relative;z-index:2;width:100%;max-width:520px;text-align:center}
+h1{font-size:clamp(19px,6vw,34px);letter-spacing:min(2.4vw,11px);margin-bottom:6px;
+  text-shadow:0 0 34px rgba(200,40,40,.3)}
+.sub{font-size:11px;letter-spacing:5px;color:#6a6560;margin-bottom:28px}
+a.card{display:block;text-decoration:none;color:#ded7c8;background:rgba(16,16,22,.9);
+  border:2px solid rgba(255,255,255,.2);border-left:4px solid #c9a227;
+  padding:16px 18px;margin-bottom:13px;text-align:left;transition:.16s}
+a.card:hover{border-color:#c9a227;background:rgba(40,32,10,.9);transform:translateX(3px)}
+a.card b{display:block;font-size:15px;letter-spacing:4px;margin-bottom:5px}
+a.card span{font-size:11px;color:#8a8578;line-height:1.6}
+#prof{margin-top:24px;background:rgba(12,12,16,.85);border:1px solid rgba(255,255,255,.13);
+  padding:14px;text-align:left}
+#prof .t{font-size:9px;letter-spacing:4px;color:rgba(255,255,255,.4);margin-bottom:8px}
+#prof .n{font-size:13px;color:#a8d8b4}
+#prof .s{font-size:10px;color:#6a6560;margin-top:6px;line-height:1.6}
+.btn{margin-top:10px;width:100%;background:#14141c;color:#ded7c8;border:2px solid rgba(255,255,255,.22);
+  padding:11px;font-family:inherit;font-size:12px;letter-spacing:3px;cursor:pointer}
+.btn:hover{background:#c9a227;color:#101014;border-color:#c9a227}
+input{width:100%;margin-top:8px;background:#0d0d12;color:#ded7c8;border:1px solid rgba(255,255,255,.2);
+  padding:10px;font-family:inherit;font-size:13px}
+.hide{display:none}
+a.card.locked{cursor:default;opacity:.5;border-left-color:#4a453e}
+a.card.locked:hover{border-color:rgba(255,255,255,.2);background:rgba(16,16,22,.9);transform:none}
+a.card .lock{float:right;font-size:13px;color:#8a8578}
+#lvlnote{font-size:10px;color:#8a8578;margin-top:2px}
+.note{margin-top:20px;font-size:10px;color:#4a4650;line-height:1.9}
+#msg{margin-top:9px;font-size:11px;min-height:15px;color:#c9a227}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div class="wrap">
+  <h1>ЗАБРОШЕННЫЙ МАГАЗИН</h1>
+  <div class="sub">И Г Р А</div>
+
+  <a class="card" href="part1.html" id="card1"><b>ЧАСТЬ I</b>
+    <span>Охранник возвращается в магазин, где пропадали люди. Четыре этажа и чердак.</span></a>
+  <a class="card" href="part2.html" id="card2"><b>ЧАСТЬ II <span class="lock hide" id="lock2">🔒</span></b>
+    <span id="card2sub">Сон, побег, тюрьма, склады и приют под землёй.</span></a>
+  <div id="lvlnote" class="hide">Пройдите часть I до конца, чтобы открыть часть II.</div>
+
+  <div id="prof">
+    <div class="t">ПРОФИЛЬ</div>
+    <div class="n" id="pname">подключаюсь...</div>
+    <div class="s" id="pstat"></div>
+    <div id="guest" class="hide">
+      <button class="btn" onclick="showClaim()">ЗАДАТЬ НИК И ПАРОЛЬ</button>
+      <button class="btn" onclick="showLogin()">ВОЙТИ ПО НИКУ</button>
+    </div>
+    <div id="formClaim" class="hide">
+      <input id="cn" placeholder="ник (он же логин)" autocomplete="off">
+      <input id="cp" type="password" placeholder="пароль, от 6 символов">
+      <button class="btn" onclick="doClaim()">СОХРАНИТЬ ПРОФИЛЬ</button>
+      <button class="btn" onclick="hideForms()">отмена</button>
+    </div>
+    <div id="formLogin" class="hide">
+      <input id="ln" placeholder="ник" autocomplete="off">
+      <input id="lp" type="password" placeholder="пароль">
+      <button class="btn" onclick="doLogin()">ВОЙТИ</button>
+      <button class="btn" onclick="hideForms()">отмена</button>
+    </div>
+    <div id="known" class="hide">
+      <button class="btn" onclick="doLogout()">ВЫЙТИ ИЗ ПРОФИЛЯ</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="note">
+    Играть можно без регистрации — прогресс сохранится на этом устройстве.<br>
+    Ник и пароль нужны только чтобы продолжить с другого телефона.<br>
+    <span id="ver" style="color:#3a3740"></span>
+  </div>
+</div>
+
+<script type="module" src="/src/entry-index.js"></script>
+<script>
+function $(id){return document.getElementById(id);}
+function hideForms(){$('formClaim').className='hide';$('formLogin').className='hide';$('msg').textContent='';}
+function showClaim(){hideForms();$('formClaim').className='';}
+function showLogin(){hideForms();$('formLogin').className='';}
+function refresh(){
+  $('pname').textContent=Profile.displayName();
+  $('pstat').textContent = Profile.online
+    ? (Profile.nick ? 'Прогресс сохраняется в облаке. Можно войти с другого устройства.'
+                    : 'Прогресс в облаке. Задайте ник, чтобы заходить с других устройств.')
+    : ('Офлайн: прогресс сохраняется только здесь.'+(Profile.lastError?' ('+Profile.lastError+')':''));
+  $('guest').className = (Profile.online && !Profile.nick) ? '' : 'hide';
+  $('known').className = (Profile.online && Profile.nick) ? '' : 'hide';
+}
+function doClaim(){
+  $('msg').textContent='сохраняю...';
+  Profile.claim($('cn').value,$('cp').value,function(r){
+    if(!r.ok){$('msg').textContent=r.msg;return;}
+    $('msg').textContent='Готово. Теперь можно входить с любого устройства.';
+    hideForms();refresh();
+  });
+}
+function doLogin(){
+  $('msg').textContent='вхожу...';
+  Profile.login($('ln').value,$('lp').value,function(r){
+    if(!r.ok){$('msg').textContent=r.msg;return;}
+    $('msg').textContent='Вошли.';hideForms();refresh();
+  });
+}
+function doLogout(){Profile.logout(function(){location.reload();});}
+
+// Режим отладки: у кого в адресе ?unlockall=1 — видит всё открытым.
+// Реального прогресса это не трогает, только то, что показано ЭТОМУ
+// человеку в ЭТОЙ вкладке — обычные игроки блокировку видят как есть.
+var DEBUG_UNLOCK=/[?&]unlockall=1\b/.test(location.search);
+// Флаг едет дальше вместе с переходом — иначе на part1/part2
+// он терялся бы уже на первом клике.
+if(DEBUG_UNLOCK){
+  ['card1','card2'].forEach(function(id){
+    var a=$(id); if(!a)return;
+    a.href=a.getAttribute('href')+'?unlockall=1';
+  });
+}
+
+// Часть II заперта, пока не пройдена часть I — первый уровень
+// системы "прошёл первое, открылось следующее".
+function applyLevelGate(){
+  var done=DEBUG_UNLOCK||Progress.isCompleteSync('part1');
+  var card=$('card2');
+  if(done){
+    card.classList.remove('locked');
+    card.removeAttribute('aria-disabled');
+    $('lock2').classList.add('hide');
+    $('card2sub').textContent='Сон, побег, тюрьма, склады и приют под землёй.';
+    $('lvlnote').classList.add('hide');
+  }else{
+    card.classList.add('locked');
+    card.setAttribute('aria-disabled','true');
+    $('lock2').classList.remove('hide');
+    $('card2sub').textContent='Открывается после прохождения части I.';
+    $('lvlnote').classList.remove('hide');
+  }
+}
+$('card2').addEventListener('click',function(e){
+  if(this.classList.contains('locked')){e.preventDefault();}
+});
+
+Profile.init(function(){
+  refresh();
+  applyLevelGate();               // мгновенно из локального кэша
+  Progress.refresh(applyLevelGate); // и следом сверяемся с сервером
+});
+
+// Номер сборки внизу страницы — по нему видно, доехало ли обновление.
+fetch('version.json?t='+Date.now(),{cache:'no-store'})
+  .then(function(r){return r.json();})
+  .then(function(v){ if(v&&v.build) $('ver').textContent='сборка '+v.build; })
+  .catch(function(){});
+</script>
+</body>
+</html>

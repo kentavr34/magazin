@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#08080a">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Заброшенный магазин</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-action:none;user-select:none;-webkit-user-select:none;}
+#renderer{position:fixed;top:0;left:0;width:100%;height:100%;}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
+#floor-ui{position:absolute;top:14px;left:14px;color:#aaa;font-size:11px;letter-spacing:3px;text-shadow:1px 1px 3px #000;}
+#fl-ui{position:absolute;top:14px;right:14px;color:#999;font-size:11px;letter-spacing:2px;text-shadow:1px 1px 3px #000;}
+#msg{position:absolute;top:26%;left:50%;transform:translateX(-50%);color:#ddd;font-size:15px;text-align:center;line-height:1.6;text-shadow:0 0 12px #000;background:rgba(0,0,0,0.65);padding:10px 18px;border-radius:4px;max-width:84vw;opacity:0;transition:opacity 0.4s;pointer-events:none;}
+#warn{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);color:#f44;font-size:22px;font-weight:bold;letter-spacing:3px;opacity:0;transition:opacity 0.2s;pointer-events:none;text-align:center;text-shadow:0 0 20px #f00;}
+#prompt{position:absolute;bottom:185px;left:50%;transform:translateX(-50%);color:#888;font-size:12px;letter-spacing:2px;text-align:center;opacity:0;transition:opacity 0.3s;background:rgba(0,0,0,0.6);padding:6px 14px;border-radius:3px;white-space:nowrap;}
+#hpbar{position:absolute;bottom:172px;left:14px;}
+#hplabel{color:#666;font-size:10px;letter-spacing:2px;margin-bottom:4px;}
+#hptrack{width:100px;height:5px;background:#111;border:1px solid #2a2a2a;border-radius:2px;}
+#hpfill{height:100%;background:linear-gradient(90deg,#cc2222,#ff4422);width:100%;border-radius:2px;transition:width 0.3s;}
+#boss-hpbar{display:none;position:absolute;top:16px;left:50%;transform:translateX(-50%);text-align:center;}
+#boss-hplabel{color:#cc2222;font-size:10px;letter-spacing:3px;margin-bottom:4px;}
+#boss-hptrack{width:220px;height:8px;background:#111;border:1px solid #440000;border-radius:4px;}
+#boss-hpfill{height:100%;background:linear-gradient(90deg,#cc0000,#ff4400);width:100%;border-radius:4px;transition:width 0.2s;}
+#redflash{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(200,0,0,0.45);opacity:0;pointer-events:none;transition:opacity 0.12s;}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.5);font-size:16px;pointer-events:none;text-shadow:0 0 4px #000;}
+#weapon-ui{display:none;position:absolute;bottom:172px;right:14px;color:rgba(255,140,50,0.85);font-size:12px;letter-spacing:2px;text-shadow:1px 1px 3px #000;}
+#blue-cube-ui{display:none;position:absolute;bottom:155px;right:14px;color:#5599ff;font-size:12px;letter-spacing:2px;}
+#endscreen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:80;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+#endtitle{color:#f33;font-size:28px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 30px #f00;margin-bottom:12px;}
+#endsub{color:#555;font-size:13px;letter-spacing:2px;margin-bottom:32px;line-height:1.6;}
+#restartbtn{background:none;border:1px solid #cc2222;color:#cc2222;font-family:'Courier New',monospace;font-size:13px;letter-spacing:4px;padding:12px 32px;cursor:pointer;text-transform:uppercase;pointer-events:all;}
+#restartbtn:active{background:#cc2222;color:#000;}
+#heartgame{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.96);z-index:70;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;pointer-events:all;}
+#hg-title{color:#883300;font-size:13px;letter-spacing:3px;margin-bottom:6px;text-transform:uppercase;}
+#hg-sub{color:#333;font-size:11px;letter-spacing:2px;margin-bottom:28px;}
+#hg-heart{font-size:72px;transition:transform 0.08s;margin-bottom:24px;}
+#hg-bar-wrap{width:220px;height:6px;background:#111;border:1px solid #222;border-radius:3px;margin-bottom:8px;position:relative;}
+#hg-bar{height:100%;background:#cc2222;width:0%;border-radius:3px;}
+#hg-zone{width:20%;height:100%;background:rgba(0,200,0,0.3);border:1px solid #0a0;position:absolute;top:0;left:40%;border-radius:3px;}
+#hg-tapbtn{background:rgba(180,0,0,0.15);border:2px solid #cc2222;color:#cc2222;font-family:'Courier New',monospace;font-size:13px;letter-spacing:3px;padding:16px 40px;cursor:pointer;text-transform:uppercase;border-radius:4px;margin-top:10px;pointer-events:all;}
+#hg-tapbtn:active{background:rgba(200,0,0,0.4);}
+#hg-mistakes{color:#555;font-size:12px;letter-spacing:2px;margin-top:18px;}
+#hg-feedback{font-size:18px;font-weight:bold;letter-spacing:2px;margin-top:10px;height:24px;color:#aaa;}
+#start{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;padding:24px;text-align:center;}
+#start h1{font-size:clamp(20px,5.5vw,38px);letter-spacing:6px;color:#cc2222;text-shadow:0 0 28px #f00,0 0 55px #800;margin-bottom:8px;animation:fl 4s infinite;}
+#start .sub{font-size:11px;color:#333;letter-spacing:4px;margin-bottom:30px;}
+#start .row{font-size:11px;color:#2a2a2a;letter-spacing:2px;margin-bottom:5px;}
+#start .row b{color:#555;}
+#startbtn{margin-top:24px;background:none;border:1px solid #cc2222;color:#cc2222;font-family:'Courier New',monospace;font-size:13px;letter-spacing:4px;padding:12px 32px;cursor:pointer;text-transform:uppercase;pointer-events:all;}
+#startbtn:active{background:#cc2222;color:#000;}
+#jzone{position:fixed;bottom:18px;left:18px;width:140px;height:140px;z-index:25;touch-action:none;}
+#jbase{position:absolute;top:8px;left:8px;width:124px;height:124px;border-radius:62px;background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.1);}
+#jknob{position:absolute;top:38px;left:38px;width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);}
+.btn{position:fixed;width:58px;height:58px;border-radius:29px;background:rgba(20,20,20,0.88);border:2px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);font-family:'Courier New',monospace;font-size:9px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;text-align:center;line-height:1.2;z-index:25;touch-action:none;-webkit-tap-highlight-color:transparent;transition:border-color 0.1s,background 0.1s;}
+.btn.pressed{border-color:#ffd700;background:rgba(60,50,0,0.88);}
+#brun{bottom:108px;right:118px;}#bcrouch{bottom:108px;right:48px;}
+#bjump{bottom:30px;right:48px;}#bfl{bottom:30px;right:118px;}
+#bact{bottom:68px;right:190px;background:rgba(40,30,0,0.88);border-color:rgba(255,180,0,0.28);color:rgba(255,200,50,0.7);font-size:14px;opacity:0;transition:opacity 0.3s,border-color 0.1s;}
+#bact.pressed{border-color:#ffd700;}
+#bshoot{display:none;bottom:68px;right:262px;background:rgba(70,0,0,0.88);border-color:rgba(255,60,0,0.32);color:rgba(255,130,50,0.85);font-size:18px;}
+@keyframes fl{0%,100%{opacity:1}90%{opacity:1}91%{opacity:0.3}92%{opacity:1}94%{opacity:0.7}95%{opacity:1}}
+/* ---- POST FX (чистый CSS, без нагрузки на GPU) ---- */
+/* веки: две шторки сверху и снизу — читается как закрывающиеся глаза */
+#lidTop,#lidBot{position:fixed;left:0;width:100%;height:0;background:#000;z-index:210;
+  pointer-events:none;box-shadow:0 0 40px 20px #000;}
+#lidTop{top:0;} #lidBot{bottom:0;}
+/* режим сцены: интерфейс полностью убирается */
+body.cine #ui,body.cine #jzone,body.cine #brun,body.cine #bcrouch,body.cine #bjump,
+body.cine #bfl,body.cine #bact,body.cine #bshoot,body.cine #prompt,body.cine #crosshair,
+body.cine #noisebar,body.cine #noiselbl,body.cine #stambar,body.cine #musdbg,
+body.cine #hpbar,body.cine #hplabel,body.cine #fl-ui,body.cine #floor-ui,
+body.cine #keys-ui,body.cine #msg{display:none!important;}
+#vig{position:fixed;inset:0;pointer-events:none;z-index:5;
+  background:radial-gradient(ellipse 78% 78% at 50% 50%,rgba(0,0,0,0) 42%,rgba(0,0,0,0.55) 78%,rgba(0,0,0,0.9) 100%);}
+#grain{position:fixed;inset:-60px;pointer-events:none;z-index:6;opacity:0.055;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  animation:gr 0.5s steps(4) infinite;}
+@keyframes gr{0%{transform:translate(0,0)}25%{transform:translate(-14px,8px)}50%{transform:translate(9px,-11px)}75%{transform:translate(-7px,-6px)}100%{transform:translate(11px,5px)}}
+/* ---- ГОЛОВОЛОМКА С ПРОВОДАМИ ---- */
+#wires{display:none;position:fixed;inset:0;z-index:150;background:rgba(4,4,6,0.93);
+  flex-direction:column;align-items:center;justify-content:center;padding:16px;}
+#wires.shake{animation:wsh 0.26s;}
+@keyframes wsh{0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
+#wireTitle{color:#ddd;font-size:clamp(11px,3.2vw,15px);letter-spacing:3px;margin-bottom:6px;text-align:center;}
+#wireHint{color:rgba(255,255,255,0.45);font-size:11px;letter-spacing:2px;margin-bottom:18px;}
+#wireBoard{display:flex;gap:clamp(30px,14vw,90px);align-items:center;}
+#wireL,#wireR{display:flex;flex-direction:column;gap:clamp(10px,2.6vh,18px);}
+.wbtn{width:clamp(46px,13vw,62px);height:clamp(26px,7vw,34px);border-radius:5px;
+  border:2px solid rgba(255,255,255,0.28);cursor:pointer;transition:transform 0.1s,box-shadow 0.15s;}
+.wbtn.wsel{transform:scale(1.16);box-shadow:0 0 22px currentColor;border-color:#fff;}
+.wsock{width:clamp(46px,13vw,62px);height:clamp(26px,7vw,34px);border-radius:5px;
+  border:3px dashed;cursor:pointer;transition:transform 0.1s;}
+.wbtn.wdone,.wsock.wdone{opacity:0.32;cursor:default;border-style:solid;}
+#wireClose{margin-top:22px;background:transparent;color:rgba(255,255,255,0.5);
+  border:1px solid rgba(255,255,255,0.25);padding:9px 26px;font-family:'Courier New',monospace;
+  font-size:11px;letter-spacing:3px;cursor:pointer;}
+/* ---- КЛЮЧИ НА ЭКРАНЕ ---- */
+#keys{display:none;position:fixed;top:6px;right:10px;z-index:20;gap:7px;pointer-events:none;}
+.keyicon{width:15px;height:15px;border-radius:50%;border:2px solid;opacity:0.30;}
+.keyicon.have{opacity:1;box-shadow:0 0 11px currentColor;}
+#key-red{border-color:#ff2a2a;color:#ff2a2a;}
+#key-green{border-color:#2ad84a;color:#2ad84a;}
+#key-blue{border-color:#3a7cff;color:#3a7cff;}
+/* ---- СПИСОК ЗАДАНИЙ: то же самое, что точки #keys, но с названием
+   и явной галочкой — видно не только "сколько уже", но и "что ещё" ---- */
+#questlist{display:none;position:fixed;right:10px;top:34px;z-index:20;
+  background:rgba(10,10,14,.78);border-left:3px solid #c9a227;padding:9px 13px;
+  font-family:'Courier New',monospace;pointer-events:none;max-width:200px;}
+#questlist .qt{font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.4);margin-bottom:7px;}
+#questlist .qi{display:flex;align-items:center;gap:8px;font-size:12px;color:#e4e0d6;margin:5px 0;}
+#questlist .qi .box{width:13px;height:13px;border:2px solid rgba(255,255,255,.35);flex:0 0 auto;position:relative;}
+#questlist .qi.done .box{border-color:#3fa85f;}
+#questlist .qi.done .box:after{content:'';position:absolute;left:2px;top:-1px;width:5px;height:9px;
+  border-right:2px solid #3fa85f;border-bottom:2px solid #3fa85f;transform:rotate(40deg);}
+#questlist .qi.done{color:#8a9a88;text-decoration:line-through;}
+#musdbg{display:none;position:fixed;top:6px;left:8px;z-index:22;pointer-events:none;
+  font-family:'Courier New',monospace;font-size:9px;letter-spacing:1px;
+  color:rgba(120,255,160,0.55);text-shadow:0 0 6px rgba(0,0,0,0.9);}
+#musdbg.bad{color:rgba(255,90,90,0.9);}
+#dial{display:none;position:fixed;inset:0;z-index:150;background:rgba(4,4,6,0.94);
+  flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#dialTitle{font-size:clamp(14px,4vw,20px);letter-spacing:5px;color:#e8e4dc;}
+#dialHint{font-size:11px;letter-spacing:2px;color:#7a7580;height:16px;}
+#dialCv{width:min(74vw,300px);height:min(74vw,300px);}
+#dialPips{display:flex;gap:9px;}
+#dialPips span{width:15px;height:15px;border:2px solid rgba(255,255,255,0.22);border-radius:50%;}
+#dialPips span.on{background:#2ad84a;border-color:#2ad84a;box-shadow:0 0 12px #2ad84a;}
+#dialBtn{background:#12121a;color:#e8e4dc;border:2px solid rgba(255,255,255,0.35);
+  padding:16px 52px;font-family:'Courier New',monospace;font-size:17px;letter-spacing:5px;cursor:pointer;}
+#dialBtn:active{background:#2ad84a;color:#07070a;}
+#dialClose{background:none;color:#5a5560;border:none;font-family:'Courier New',monospace;
+  font-size:11px;letter-spacing:3px;cursor:pointer;padding:8px;}
+#dial.bad #dialCv{animation:wsh 0.26s;}
+#noiselbl{display:none;position:fixed;bottom:172px;left:50%;transform:translateX(-50%);
+  font-size:9px;letter-spacing:4px;color:rgba(255,255,255,0.42);z-index:20;pointer-events:none;}
+#noisebar{display:none;position:fixed;bottom:156px;left:50%;transform:translateX(-50%);
+  width:min(46vw,220px);height:9px;background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.16);z-index:20;pointer-events:none;}
+#noisefill{height:100%;width:2%;background:#2a8a2a;transition:width 0.12s linear,background 0.25s;}
+#stambar{position:fixed;bottom:132px;left:50%;transform:translateX(-50%);
+  width:min(46vw,220px);height:7px;background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.14);z-index:20;pointer-events:none;}
+#stamfill{height:100%;width:100%;background:#8ab4d8;transition:background 0.3s;}
+#stamfill.low{background:#c25a2a;}
+#dmg{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity 0.25s;
+  background:radial-gradient(ellipse 70% 70% at 50% 50%,rgba(0,0,0,0) 30%,rgba(120,0,0,0.75) 100%);}
+</style>
+</head>
+<body>
+<div id="lidTop"></div><div id="lidBot"></div>
+<div id="vig"></div><div id="grain"></div><div id="dmg"></div>
+<div id="keys"><div id="key-red" class="keyicon"></div><div id="key-green" class="keyicon"></div><div id="key-blue" class="keyicon"></div></div>
+<div id="questlist">
+  <div class="qt">ЗАДАНИЕ</div>
+  <div class="qi" id="qi-red"><div class="box"></div>Красный генератор</div>
+  <div class="qi" id="qi-green"><div class="box"></div>Зелёный генератор</div>
+  <div class="qi" id="qi-blue"><div class="box"></div>Синий генератор</div>
+</div>
+<div id="wires">
+  <div id="wireTitle"></div>
+  <div id="wireHint"></div>
+  <div id="wireBoard"><div id="wireL"></div><div id="wireR"></div></div>
+  <button id="wireClose" onclick="closeWires()">ОТОЙТИ</button>
+</div>
+<div id="dial">
+  <div id="dialTitle">ПОСЛЕДНИЙ ЗАМОК</div>
+  <div id="dialHint">Останови стрелку на зелёном</div>
+  <canvas id="dialCv" width="300" height="300"></canvas>
+  <div id="dialPips"></div>
+  <button id="dialBtn" onclick="dialStop()">СТОП</button>
+  <button id="dialClose" onclick="closeDial()">ОТОЙТИ</button>
+</div>
+<div id="musdbg" style="display:block"></div>
+<div id="noiselbl">ШУМ</div><div id="noisebar"><div id="noisefill"></div></div>
+<div id="stambar"><div id="stamfill"></div></div>
+<div id="start">
+  <h1>Заброшенный магазин</h1>
+  <div class="sub">ЧАСТЬ I — 3D</div>
+  <div class="row"><b>Джойстик слева</b> — движение</div>
+  <div class="row"><b>Свайп по экрану</b> — поворот камеры</div>
+  <div class="row"><b>Кнопки справа</b> — бег / присесть / прыжок / фонарик</div>
+  <button id="startbtn" onclick="startGame()">ВОЙТИ В МАГАЗИН</button>
+  <button id="continuebtn" onclick="continueGame()" style="margin-top:10px;display:none;">ПРОДОЛЖИТЬ — ЭТАЖ <span id="continuefloor">2</span></button>
+  <button onclick="if(window.Inventory)Inventory.open();" style="margin-top:10px;">🎒 РЮКЗАК И МАГАЗИН</button>
+  <div id="debugfloors" style="display:none;margin-top:14px;">
+    <div style="font-size:10px;letter-spacing:2px;color:#8a7a3a;margin-bottom:6px;">ОТЛАДКА — ЛЮБОЙ ЭТАЖ</div>
+  </div>
+</div>
+<div id="endscreen">
+  <div id="endtitle">ВЫ ПОГИБЛИ</div>
+  <div id="endsub"></div>
+  <button id="restartbtn" onclick="restartGame()">НАЧАТЬ ЗАНОВО</button>
+</div>
+<div id="heartgame">
+  <div id="hg-title">ТЫ СПРЯТАЛСЯ ПОД КРОВАТЬЮ</div>
+  <div id="hg-sub">Нажимай кнопку в момент вспышки — 3 промаха и ты раскрыт</div>
+  <div id="hg-heart">🖤</div>
+  <div id="hg-bar-wrap"><div id="hg-bar"></div><div id="hg-zone"></div></div>
+  <button id="hg-tapbtn" onclick="heartTap()">НАЖАТЬ</button>
+  <div id="hg-mistakes">Промахи: <span id="hg-miss">0</span> / 3</div>
+  <div id="hg-feedback"> </div>
+</div>
+<div id="renderer"></div>
+<div id="ui">
+  <div id="redflash"></div>
+  <div id="crosshair">＋</div>
+  <div id="floor-ui">ЭТАЖ 1</div>
+  <div id="fl-ui">🔦 ВКЛ</div>
+  <div id="hpbar"><div id="hplabel">HP</div><div id="hptrack"><div id="hpfill"></div></div></div>
+  <div id="boss-hpbar"><div id="boss-hplabel">МЕБЕЛЬЩИК</div><div id="boss-hptrack"><div id="boss-hpfill"></div></div></div>
+  <div id="weapon-ui">🔫 РУЖЬЁ</div>
+  <div id="blue-cube-ui">💎 СИНИЙ КУБ</div>
+  <div id="msg"></div><div id="warn"></div><div id="prompt"></div>
+</div>
+<div id="jzone"><div id="jbase"></div><div id="jknob"></div></div>
+<div class="btn" id="brun">БЕГ</div><div class="btn" id="bcrouch">СЕСТЬ</div>
+<div class="btn" id="bjump">ПРЫЖОК</div><div class="btn" id="bfl">🔦</div>
+<div class="btn" id="bact">E</div><div class="btn" id="bshoot">🔫</div>
+
+<!-- three.js теперь из npm (см. web/package.json), не из vendor-файла.
+     Мост (entry-part1.js) — модуль, значит откладывается до конца
+     парсинга; игровой код (part1-game.js) остался классическим
+     скриптом, но с defer — тот же порядок отложенного выполнения,
+     поэтому window.THREE успевает появиться первым. -->
+<script type="module" src="/src/entry-part1.js"></script>
+<script src="/legacy/part1-game.js" defer></script>
+</body>
+</html>
