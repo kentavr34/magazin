@@ -96,10 +96,13 @@ log "подписываю"
   --out "$OUT/magazin.apk" "$OUT/aligned.apk"
 
 # ---------- 8. проверка по факту ----------
+# `head` закрывает трубу после N строк раньше, чем aapt2/apksigner
+# заканчивают писать — под set -o pipefail это SIGPIPE (код 141),
+# скрипт падал ПОСЛЕ успешной сборки, просто не успев скопировать apk.
 log "проверяю подпись"
-"$BT/apksigner" verify --print-certs "$OUT/magazin.apk" | head -4
+"$BT/apksigner" verify --print-certs "$OUT/magazin.apk" 2>&1 | head -4 || true
 
-"$BT/aapt2" dump badging "$OUT/magazin.apk" | head -3
+"$BT/aapt2" dump badging "$OUT/magazin.apk" 2>&1 | head -3 || true
 
 cp -f "$OUT/magazin.apk" "$APK_FINAL"
 # apk должен лежать и внутри выложенной версии, чтобы его можно было скачать
