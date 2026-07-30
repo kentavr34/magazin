@@ -20,6 +20,7 @@ var CORE = [
   './js/progress.js',
   './js/coins.js',
   './js/inventory.js',
+  './js/mapview.js',
   './js/detail.js',
   './js/controls.js',
   './js/updater.js',
