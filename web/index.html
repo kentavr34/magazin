@@ -11,53 +11,102 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#08080a;color:#ded7c8;font-family:'Courier New',monospace;min-height:100vh;
-  display:flex;align-items:center;justify-content:center;padding:22px;overflow-x:hidden}
+:root{
+  --bg:#08080a;--ink:#ded7c8;--muted:#8a8578;--faint:#5a564e;
+  --panel:rgba(17,17,23,.92);--line:rgba(255,255,255,.14);
+  --gold:#c9a227;--gold-soft:rgba(201,162,39,.14);
+  --sp1:8px;--sp2:16px;--sp3:24px;--sp4:32px;--sp5:48px;
+  --radius:14px;--radius-sm:9px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:'Courier New',monospace;
+  min-height:100dvh;display:flex;justify-content:center;
+  padding:var(--sp5) var(--sp3) var(--sp3);overflow-x:hidden}
 #bg{position:fixed;inset:-10%;z-index:0;
   background:radial-gradient(ellipse 60% 55% at 50% 40%,rgba(150,60,40,.15),rgba(0,0,0,0) 70%),
              radial-gradient(ellipse 80% 70% at 50% 100%,rgba(40,30,60,.35),rgba(0,0,0,0) 70%);
   animation:br 9s ease-in-out infinite}
 @keyframes br{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}
-.wrap{position:relative;z-index:2;width:100%;max-width:520px;text-align:center}
-h1{font-size:clamp(19px,6vw,34px);letter-spacing:min(2.4vw,11px);margin-bottom:6px;
-  text-shadow:0 0 34px rgba(200,40,40,.3)}
-.sub{font-size:11px;letter-spacing:5px;color:#6a6560;margin-bottom:28px}
-a.card{display:block;text-decoration:none;color:#ded7c8;background:rgba(16,16,22,.9);
-  border:2px solid rgba(255,255,255,.2);border-left:4px solid #c9a227;
-  padding:16px 18px;margin-bottom:13px;text-align:left;transition:.16s}
-a.card:hover{border-color:#c9a227;background:rgba(40,32,10,.9);transform:translateX(3px)}
-a.card b{display:block;font-size:15px;letter-spacing:4px;margin-bottom:5px}
-a.card span{font-size:11px;color:#8a8578;line-height:1.6}
-#prof{margin-top:24px;background:rgba(12,12,16,.85);border:1px solid rgba(255,255,255,.13);
-  padding:14px;text-align:left}
-#prof .t{font-size:9px;letter-spacing:4px;color:rgba(255,255,255,.4);margin-bottom:8px}
+.wrap{position:relative;z-index:2;width:100%;max-width:420px;text-align:center;
+  display:flex;flex-direction:column;align-items:center}
+
+#logo{display:block;width:72px;height:72px;border-radius:20px;object-fit:cover;
+  margin-bottom:var(--sp3);
+  box-shadow:0 0 0 1px var(--line),0 10px 30px rgba(0,0,0,.5),0 0 40px rgba(200,40,40,.18);}
+
+h1{font-size:clamp(18px,5.6vw,28px);letter-spacing:min(2vw,7px);line-height:1.35;
+  margin-bottom:var(--sp1);text-shadow:0 0 34px rgba(200,40,40,.3);font-weight:700}
+.sub{font-size:10px;letter-spacing:6px;color:var(--faint);margin-bottom:var(--sp4)}
+
+.nav{width:100%;display:flex;flex-direction:column;gap:var(--sp2)}
+a.card{position:relative;display:flex;align-items:center;gap:14px;text-decoration:none;
+  color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.35);
+  transition:transform .16s,border-color .16s,background .16s}
+a.card:active{transform:scale(.98)}
+@media(hover:hover){a.card:hover{border-color:var(--gold);background:rgba(40,32,10,.9);transform:translateY(-2px)}}
+a.card .ic{flex:0 0 auto;width:44px;height:44px;border-radius:var(--radius-sm);
+  background:var(--gold-soft);border:1px solid rgba(201,162,39,.3);
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+a.card .tx{flex:1;min-width:0}
+a.card b{display:flex;align-items:center;gap:8px;font-size:14px;letter-spacing:3px;margin-bottom:4px}
+a.card span{display:block;font-size:11.5px;color:var(--muted);line-height:1.55}
+a.card .go{flex:0 0 auto;font-size:16px;color:var(--faint);transition:transform .16s,color .16s}
+@media(hover:hover){a.card:hover .go{color:var(--gold);transform:translateX(3px)}}
+
+a.card.locked{cursor:default;opacity:.55}
+a.card.locked .ic{background:rgba(255,255,255,.05);border-color:var(--line)}
+@media(hover:hover){a.card.locked:hover{border-color:var(--line);background:var(--panel);transform:none}
+  a.card.locked:hover .go{color:var(--faint);transform:none}}
+#lvlnote{font-size:10.5px;color:var(--muted);margin-top:2px;text-align:left;padding:0 2px}
+
+#prof{width:100%;margin-top:var(--sp4);background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:var(--sp3);text-align:left}
+#prof .t{font-size:9px;letter-spacing:4px;color:var(--faint);margin-bottom:10px;
+  display:flex;align-items:center;gap:8px}
+#prof .t:before{content:'';width:14px;height:1px;background:var(--line)}
 #prof .n{font-size:13px;color:#a8d8b4}
-#prof .s{font-size:10px;color:#6a6560;margin-top:6px;line-height:1.6}
-.btn{margin-top:10px;width:100%;background:#14141c;color:#ded7c8;border:2px solid rgba(255,255,255,.22);
-  padding:11px;font-family:inherit;font-size:12px;letter-spacing:3px;cursor:pointer}
-.btn:hover{background:#c9a227;color:#101014;border-color:#c9a227}
-input{width:100%;margin-top:8px;background:#0d0d12;color:#ded7c8;border:1px solid rgba(255,255,255,.2);
-  padding:10px;font-family:inherit;font-size:13px}
+#prof .s{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.6}
+
+.btn{margin-top:10px;width:100%;min-height:44px;background:#181820;color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px;font-family:inherit;font-size:11.5px;letter-spacing:2.5px;cursor:pointer;
+  transition:background .14s,border-color .14s,color .14s}
+@media(hover:hover){.btn:hover{background:var(--gold);color:#101014;border-color:var(--gold)}}
+.btn:active{transform:scale(.99)}
+input{width:100%;min-height:44px;margin-top:8px;background:#0d0d12;color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:0 12px;font-family:inherit;font-size:13px}
+input:focus{outline:none;border-color:var(--gold)}
+input::placeholder{color:var(--faint)}
+
 .hide{display:none}
-a.card.locked{cursor:default;opacity:.5;border-left-color:#4a453e}
-a.card.locked:hover{border-color:rgba(255,255,255,.2);background:rgba(16,16,22,.9);transform:none}
-a.card .lock{float:right;font-size:13px;color:#8a8578}
-#lvlnote{font-size:10px;color:#8a8578;margin-top:2px}
-.note{margin-top:20px;font-size:10px;color:#4a4650;line-height:1.9}
-#msg{margin-top:9px;font-size:11px;min-height:15px;color:#c9a227}
+.note{margin-top:var(--sp4);font-size:10px;color:var(--faint);line-height:1.9;padding:0 4px}
+#msg{margin-top:9px;font-size:11px;min-height:15px;color:var(--gold)}
 </style>
 </head>
 <body>
 <div id="bg"></div>
 <div class="wrap">
+  <img id="logo" src="icons/icon-192.png" alt="">
   <h1>ЗАБРОШЕННЫЙ МАГАЗИН</h1>
   <div class="sub">И Г Р А</div>
 
-  <a class="card" href="part1.html" id="card1"><b>ЧАСТЬ I</b>
-    <span>Охранник возвращается в магазин, где пропадали люди. Четыре этажа и чердак.</span></a>
-  <a class="card" href="part2.html" id="card2"><b>ЧАСТЬ II <span class="lock hide" id="lock2">🔒</span></b>
-    <span id="card2sub">Сон, побег, тюрьма, склады и приют под землёй.</span></a>
+  <div class="nav">
+    <a class="card" href="part1.html" id="card1">
+      <div class="ic">🏚️</div>
+      <div class="tx"><b>ЧАСТЬ I</b>
+        <span>Охранник возвращается в магазин, где пропадали люди. Четыре этажа и чердак.</span></div>
+      <div class="go">›</div>
+    </a>
+    <a class="card" href="part2.html" id="card2">
+      <div class="ic">🌙</div>
+      <div class="tx"><b>ЧАСТЬ II <span class="lock hide" id="lock2">🔒</span></b>
+        <span id="card2sub">Сон, побег, тюрьма, склады и приют под землёй.</span></div>
+      <div class="go">›</div>
+    </a>
+  </div>
   <div id="lvlnote" class="hide">Пройдите часть I до конца, чтобы открыть часть II.</div>
 
   <div id="prof">
