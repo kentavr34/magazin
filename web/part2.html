@@ -136,7 +136,19 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
   background:rgba(60,40,100,0.35);display:block;}
 #uvhud i.ok{background:#8a5cff;box-shadow:0 0 8px #8a5cff;}
 #uvhud .sp{margin-top:5px;color:rgba(255,255,255,0.45);}
+#uv-inspect-btn{display:none;position:fixed;left:16px;top:150px;z-index:30;
+  font-size:10px;letter-spacing:2px;color:rgba(200,170,255,0.85);
+  border:1px solid rgba(170,130,255,0.4);border-radius:4px;padding:5px 9px;
+  background:rgba(20,10,35,0.5);cursor:pointer;user-select:none;}
+#uv-inspect-btn:hover{border-color:#c86bff;color:#e8d8ff;}
+#uv-inspect-btn.on{background:rgba(120,60,200,0.5);border-color:#c86bff;}
 #batwrap{display:none;position:fixed;left:16px;top:52px;z-index:30;pointer-events:none;}
+#fl2-inspect-btn{display:none;position:fixed;left:16px;top:80px;z-index:30;
+  font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.75);
+  border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:5px 9px;
+  background:rgba(20,20,20,0.5);cursor:pointer;user-select:none;}
+#fl2-inspect-btn:hover{border-color:#fff;color:#fff;}
+#fl2-inspect-btn.on{background:rgba(90,90,90,0.5);border-color:#fff;}
 #batlbl{font-size:9px;letter-spacing:3px;color:rgba(255,255,255,0.4);margin-bottom:3px;}
 #batbar{width:120px;height:8px;background:rgba(255,255,255,0.08);
   border:1px solid rgba(255,255,255,0.18);}
@@ -220,7 +232,9 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 <div id="savedmsg"></div>
 <div id="uvflash"></div>
 <div id="uvhud"></div>
+<div id="uv-inspect-btn" class="touchui" onclick="uvInspectToggle()">👁 ОСМОТР</div>
 <div id="batwrap"><div id="batlbl">ЗАРЯД</div><div id="batbar"><div id="batfill"></div></div></div>
+<div id="fl2-inspect-btn" class="touchui" onclick="fl2InspectToggle()">👁 ОСМОТР</div>
 <div id="vibwrap">
   <div id="viblbl">ВИБРАЦИЯ ПОЛА</div>
   <div id="vibbar"><div id="vibfill"></div></div>
