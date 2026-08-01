@@ -46,47 +46,11 @@
   ];
   var uvById = {}; UV_SKINS.forEach(function (s) { uvById[s.id] = s; });
 
-  /* Маленькая превью-иконка скина — рисуется на canvas, никаких
-     внешних картинок. Игрок должен видеть, на что похож скин,
-     а не только читать название цвета. */
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-  var iconCache = {};
-  function flashlightIcon(lensHex) {
-    var key = 'fl:' + lensHex;
-    if (iconCache[key]) return iconCache[key];
-    var c = document.createElement('canvas'); c.width = c.height = 56;
-    var g = c.getContext('2d');
-    g.fillStyle = '#26262c'; roundRect(g, 6, 22, 30, 12, 4); g.fill();
-    g.fillStyle = '#1a1a1e'; roundRect(g, 34, 18, 14, 20, 4); g.fill();
-    var grad = g.createRadialGradient(46, 28, 1, 46, 28, 13);
-    grad.addColorStop(0, lensHex); grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grad; g.beginPath(); g.arc(46, 28, 13, 0, Math.PI * 2); g.fill();
-    g.fillStyle = lensHex; g.beginPath(); g.arc(46, 28, 5, 0, Math.PI * 2); g.fill();
-    return iconCache[key] = c.toDataURL('image/png');
-  }
-  function uvIcon(bodyHex, accentHex) {
-    var key = 'uv:' + bodyHex + ':' + accentHex;
-    if (iconCache[key]) return iconCache[key];
-    var c = document.createElement('canvas'); c.width = c.height = 56;
-    var g = c.getContext('2d');
-    g.fillStyle = bodyHex; roundRect(g, 8, 24, 30, 10, 3); g.fill();
-    g.save(); g.translate(15, 33); g.rotate(0.35);
-    g.fillStyle = '#101014'; roundRect(g, -4, 0, 8, 16, 2); g.fill();
-    g.restore();
-    var grad = g.createRadialGradient(10, 29, 1, 10, 29, 11);
-    grad.addColorStop(0, accentHex); grad.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grad; g.beginPath(); g.arc(10, 29, 11, 0, Math.PI * 2); g.fill();
-    g.fillStyle = accentHex; g.fillRect(20, 25, 15, 2);
-    return iconCache[key] = c.toDataURL('image/png');
-  }
+  /* Превью-иконки скинов — сгенерированы заранее (Qwen-Image) и лежат
+     статикой в icons/skins/. Раньше рисовались на canvas — заменено
+     на настоящие изображения, canvas-эскизы были слишком грубыми. */
+  function flashlightIcon(id) { return 'icons/skins/fl_' + id + '.png'; }
+  function uvIcon(id) { return 'icons/skins/uv_' + id + '.png'; }
   function uvOwned(id) {
     if (id === 'default') return true;
     return !!(global.Progress && Progress.isCompleteSync('shop_uv_' + id));
@@ -112,7 +76,7 @@
     UV_SKINS.forEach(function (s) {
       var row = document.createElement('div'); row.className = 'shopitem';
       var img = document.createElement('img'); img.className = 'preview';
-      img.src = uvIcon(s.body, s.accent);
+      img.src = uvIcon(s.id);
       var n = document.createElement('div'); n.className = 'n';
       n.textContent = s.name + (s.price ? ' — 🪙 ' + s.price : ' — бесплатно');
       var b = document.createElement('button'); b.className = 'k';
@@ -240,7 +204,7 @@
     SKINS.forEach(function (s) {
       var row = document.createElement('div'); row.className = 'shopitem';
       var img = document.createElement('img'); img.className = 'preview';
-      img.src = flashlightIcon('#' + s.lens.toString(16).padStart(6, '0'));
+      img.src = flashlightIcon(s.id);
       var n = document.createElement('div'); n.className = 'n';
       n.textContent = s.name + (s.price ? ' — 🪙 ' + s.price : ' — бесплатно');
       var b = document.createElement('button'); b.className = 'k';
