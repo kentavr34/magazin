@@ -465,6 +465,18 @@ function unlockSpeech(){
   speechOK=true;
   try{var u=new SpeechSynthesisUtterance('');u.volume=0;speechSynthesis.speak(u);}catch(e){}
 }
+var voiceAudioOK=false;
+function unlockVoiceAudio(){
+  if(voiceAudioOK)return;
+  voiceAudioOK=true;
+  try{
+    var a=new Audio('audio/voice/part2/you_01.mp3');
+    a.volume=0;
+    var p=a.play();
+    if(p&&p.catch)p.catch(function(){});
+    setTimeout(function(){try{a.pause();a.currentTime=0;}catch(e){}},100);
+  }catch(e){}
+}
 function say(txt,rate,pitch){
   if(!window.speechSynthesis)return;
   try{
@@ -8447,7 +8459,7 @@ function armMenuAudio(){
     document.removeEventListener('pointerdown',kick,true);
     document.removeEventListener('touchstart',kick,true);
     document.removeEventListener('keydown',kick,true);
-    unlockSpeech();
+    unlockSpeech();unlockVoiceAudio();
     var a=getAC();
     if(!a)return;
     function go(){
@@ -8467,7 +8479,7 @@ function armMenuAudio(){
 function menuNewGame(){
   MenuMusic.stop();
   document.getElementById('start').style.display='none';
-  unlockSpeech();getAC();started=true;lastT=performance.now();
+  unlockSpeech();unlockVoiceAudio();getAC();started=true;lastT=performance.now();
   setTimeout(function(){Music.prepare();SearchMusic.prepare();HammerMusic.prepare();
                         DomeMusic.prepare();},80);
   showMsg('Обычный день. Обычная смена.',3.2);
@@ -8478,7 +8490,7 @@ function menuContinue(){
   if(!SAVE.has)return;
   MenuMusic.stop();
   document.getElementById('start').style.display='none';
-  unlockSpeech();getAC();started=true;lastT=performance.now();
+  unlockSpeech();unlockVoiceAudio();getAC();started=true;lastT=performance.now();
   setTimeout(function(){Music.prepare();SearchMusic.prepare();HammerMusic.prepare();
                         DomeMusic.prepare();},80);
   loadSave();
