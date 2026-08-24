@@ -468,6 +468,21 @@ function buildFloor(floorNum){
         box(1,H2,1,wallMat,cx,H2/2,cz);
       }
 
+      if(v===0&&floorNum<=2){
+        // редкая пристенная декор-мебель для разнообразия — «как в
+        // обычном мебельном магазине». Тонкая, вплотную к стене,
+        // прохода не блокирует (никакой solid()/коллизии не добавляет).
+        var wnx=0,wnz=0;
+        if(x>0&&map[z][x-1]===1)wnx=1;
+        else if(x<19&&map[z][x+1]===1)wnx=-1;
+        else if(z>0&&map[z-1][x]===1)wnz=1;
+        else if(z<19&&map[z+1][x]===1)wnz=-1;
+        if((wnx||wnz)&&Math.random()<0.05){
+          if(Math.random()<0.5)buildMirror(cx,cz,wnx,wnz);
+          else buildShelf(cx,cz,wnx,wnz);
+        }
+      }
+
       if(v===3){// door
         box(1,H2,0.12,MATS.door,cx,H2/2,cz);
         // Door frame
@@ -720,6 +735,39 @@ function buildWardrobe(cx,cz){
   for(var k=0;k<3;k++){
     box(0.02,0.3*sc,0.005,scratchM,cx+(Math.random()-0.5)*w*0.6,h*(0.3+Math.random()*0.4),cz+d/2+0.02);
   }
+}
+
+function buildMirror(cx,cz,nx,nz){
+  // зеркало на стене — узкая рама + отражающая панель. Ставится вплотную
+  // к стене, лицом внутрь комнаты (nx,nz — направление в комнату).
+  var frameM=new THREE.MeshStandardMaterial({color:0x2a1a10,roughness:0.85});
+  var glassM=new THREE.MeshStandardMaterial({color:0xb8c8d0,roughness:0.05,metalness:0.6});
+  var g=new THREE.Group();
+  g.position.set(cx-nx*0.46,1.35,cz-nz*0.46);
+  g.rotation.y=Math.atan2(nx,nz);
+  var frame=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.85,0.04),frameM);
+  frame.castShadow=true;frame.receiveShadow=true;g.add(frame);
+  var glass=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.72,0.01),glassM);
+  glass.position.z=0.021;g.add(glass);
+  addObj(g);
+}
+function buildShelf(cx,cz,nx,nz){
+  // навесная полка с парой предметов — та же логика, что у зеркала,
+  // тонкая и вплотную к стене, прохода не занимает.
+  var woodM=new THREE.MeshStandardMaterial({color:0x5a4020,roughness:0.85,map:TEX.wood,bumpMap:TEX.wood,bumpScale:0.05});
+  var potM=new THREE.MeshStandardMaterial({color:0x6a5a48,roughness:0.9});
+  var g=new THREE.Group();
+  g.position.set(cx-nx*0.46,1.05,cz-nz*0.46);
+  g.rotation.y=Math.atan2(nx,nz);
+  var plank=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.05,0.22),woodM);
+  plank.castShadow=true;plank.receiveShadow=true;g.add(plank);
+  var bracket=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.14,0.20),woodM);
+  bracket.position.set(0,-0.09,0);g.add(bracket);
+  for(var pi=0;pi<2;pi++){
+    var pot=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.12,8),potM);
+    pot.position.set(-0.18+pi*0.36,0.085,0);pot.castShadow=true;g.add(pot);
+  }
+  addObj(g);
 }
 
 // ============================================================
@@ -1052,14 +1100,32 @@ function createBossMesh(){
   [-0.14,0.14].forEach(function(dx){
     var e=new THREE.Mesh(eg,em);e.position.set(dx,1.96,0.24);g.add(e);
   });
-  // руки: диван и шкаф — пока коробки, форму доделаем позже.
-  // На шарнире от плеча, как и ноги, — качаются в updateF4()/CUT.
+  // руки: левая — валик дивана (рулонное плечо + предплечье + скруглённая
+  // "подушка"-кисть), правая — дверца шкафа (рама + утопленная филёнка +
+  // ручка, тот же язык, что у buildWardrobe). Раньше обе были голыми
+  // коробками — детализация по образцу Этапа 18. На шарнире от плеча,
+  // как и ноги, — качаются в updateF4()/CUT.
   var armM=new THREE.MeshStandardMaterial({color:0x5a3520,roughness:0.95});
+  var armDarkM=new THREE.MeshStandardMaterial({color:0x1c130c,roughness:0.95});
+  var armMetalM=new THREE.MeshStandardMaterial({color:0x8a8a8a,roughness:0.4,metalness:0.8});
   g.userData.arms=[];
   [-0.56,0.56].forEach(function(dx){
     var piv=new THREE.Group();piv.position.set(dx,1.625,0);
-    var a=new THREE.Mesh(new THREE.BoxGeometry(0.26,1.05,0.26),armM);
-    a.position.y=-0.525;piv.add(a);
+    if(dx<0){
+      var shoulder=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.13,0.30,10),armM);
+      shoulder.rotation.z=Math.PI/2;shoulder.position.y=-0.15;piv.add(shoulder);
+      var fore=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.80,0.24),armM);
+      fore.position.y=-0.62;piv.add(fore);
+      var cap=new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8,0,Math.PI*2,0,Math.PI/2),armM);
+      cap.position.y=-1.02;piv.add(cap);
+    }else{
+      var frame=new THREE.Mesh(new THREE.BoxGeometry(0.30,1.05,0.20),armM);
+      frame.position.y=-0.525;piv.add(frame);
+      var panel=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.85,0.03),armDarkM);
+      panel.position.set(0,-0.525,0.10);piv.add(panel);
+      var handle=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.16,8),armMetalM);
+      handle.rotation.z=Math.PI/2;handle.position.set(0.08,-0.30,0.115);piv.add(handle);
+    }
     g.add(piv);g.userData.arms.push(piv);
     if(dx>0)g.userData.rightArmPivot=piv;   // пружины крепим сюда же, ниже
   });
