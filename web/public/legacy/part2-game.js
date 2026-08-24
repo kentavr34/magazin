@@ -6330,17 +6330,24 @@ function buildSecretTruck(){
   SECRET2.truck.position.set(W3/2,0,D3/2);
   scene.add(SECRET2.truck);objs.push(SECRET2.truck);
   solid(W3/2-1.5,D3/2-3.0,W3/2+1.5,D3/2+3.0);
+  // завал слева от входа — путь налево закрыт, только направо, мимо
+  // кабины (тот самый "другой грузовик" блокирует проход собой)
+  box(3.6,2.6,3.2,wallM,2.2,1.3,10.5,0.28);
+  box(1.6,1.2,1.4,MATS.dark,3.1,2.9,10.2,-0.4);
+  solid(0,9.0,3.8,14);
   P.x=W3/2;P.z=D3-1.6;P.y=0;P.yaw=Math.PI;P.pitch=0;
   camera.rotation.z=0;camera.up.set(0,1,0);
 }
 function startSecretTruck(){
   PHASE='secret2';SECRET2.stage=3;SECRET2.glassBroken=false;
+  Music.stop();
   startLoading(buildSecretTruck,function(){
     PHASE='secret2';
     document.getElementById('black').style.transition='opacity 1.8s';
     document.getElementById('black').style.opacity='0';
-    setTimeout(function(){showMsg('Кажется, не пройти. Разве что через грузовик.',3.4);},1600);
-    setTimeout(function(){questShow('Найти путь через грузовик','Разбейте стекло кабины');},3200);
+    setTimeout(function(){showMsg('Слева — завал. Дальше не пройти.',2.8);},1600);
+    setTimeout(function(){showMsg('Разве что через грузовик. Направо.',3.2);},4600);
+    setTimeout(function(){questShow('Найти путь через грузовик','Разбейте стекло кабины');},6200);
   });
 }
 var nSec2=null;
