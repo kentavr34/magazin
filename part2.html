@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -812,7 +812,7 @@ function talkToMan(){
   setPrompt('',false);
   showSub('Покупатель','Это вы здесь работаете?',3.0);
   say('Это вы здесь работаете?',1.0,1.0);
-  setTimeout(function(){showSub('Вы','Да, я охранник. Что-то случилось?',3.0);say('Да, я охранник.',0.9,0.6);},3200);
+  setTimeout(function(){showSub('Вы','Да, я охранник. Что-то случилось?',3.0);sayE('Да, я охранник. Что-то случилось?');},3200);
   setTimeout(function(){
     showSub('Покупатель','Помогите, пожалуйста. Там... странно.',3.2);
     say('Помогите пожалуйста. Там странно.',1.0,1.0);
@@ -896,8 +896,7 @@ function smellBed(){
   SHK.bx=nBed.x;SHK.bz=nBed.z;
   var theBed=nBed;
   nBed=null;nMan=false;      // цели магазина дальше не действуют
-  showSub('Вы','Да... реально пахнет как мясо.',2.6);
-  say('Да. Реально пахнет как мясо.',0.85,0.55);
+  showSub('Вы','Да... реально пахнет как мясо.',2.6);sayE('Да... реально пахнет как мясо.');
   // прячем кровать, на её месте вырастает он
   theBed.g.visible=false;
   if(!bossMesh){bossMesh=createBossMesh();scene.add(bossMesh);}
@@ -1295,8 +1294,7 @@ function startRoom(){
   document.getElementById('dmg').style.opacity='0';
   Music.stop();
   setTimeout(function(){
-    showSub('Вы','Фух... убежал.',2.6);
-    say('Фух. Убежал.',0.9,0.55);
+    showSub('Вы','Фух... убежал.',2.6);sayE('Фух... убежал.');
   },1800);
 }
 
@@ -1686,8 +1684,7 @@ function prAct(){
   var t=nPr.t;
   if(t==='key'){
     PR.hasYellow=true;scene.remove(PR.keyMesh);PR.keyMesh=null;invHUD();
-    showSub('Вы','Ключ. Прямо у решётки. Он что, обронил?',3.0);
-    say('Ключ. Прямо у решётки.',0.85,0.55);
+    showSub('Вы','Ключ. Прямо у решётки. Он что, обронил?',3.0);sayE('Ключ. Прямо у решётки. Он что, обронил?');
   }
   else if(t==='cage'){
     PR.cageOpen=true;questDone();
@@ -1703,10 +1700,10 @@ function prAct(){
     s.searched=true;
     if(s.hasKey){
       PR.keys++;invHUD();sndPickup();
-      showSub('Вы','Маленький ключик. В книге вырезана дырка.',3.0);
+      showSub('Вы','Маленький ключик. В книге вырезана дырка.',3.0);sayE('Маленький ключик. В книге вырезана дырка.');
       if(PR.keys===PR.keysNeed)setTimeout(function(){showMsg('Все ключики собраны',2.4);},1200);
     }else{
-      showSub('Вы','Просто книги.',1.8);
+      showSub('Вы','Просто книги.',1.8);sayE('Просто книги.');
     }
   }
   else if(t==='safeKeys'){
@@ -1715,16 +1712,14 @@ function prAct(){
     showSub('Вы','Внутри бумажка. Код: '+PR.code,4.2);
     say('Код. '+PR.code.split('').join(' '),0.8,0.55);
     setTimeout(function(){
-      showSub('Вы','Почему он так любит сейфы?',2.8);
-      say('Почему он так любит сейфы?',0.85,0.55);
+      showSub('Вы','Почему он так любит сейфы?',2.8);sayE('Почему он так любит сейфы?');
     },4600);
   }
   else if(t==='safeCode'){
     if(PR.safeCodeOpen){
       if(!PR.hasDriver){
         PR.hasDriver=true;invHUD();sndPickup();
-        showSub('Вы','Отвёртка. Он держал в сейфе... отвёртку.',3.4);
-        say('Он держал в сейфе отвёртку.',0.85,0.55);
+        showSub('Вы','Отвёртка. Он держал в сейфе... отвёртку.',3.4);sayE('Отвёртка. Он держал в сейфе... отвёртку.');
       }
       return;
     }
@@ -1757,7 +1752,7 @@ function kpPress(d){
     setTimeout(function(){
       if(KP.buf===PR.code){
         PR.safeCodeOpen=true;invHUD();sndSafe();closeKeypad();
-        showSub('Вы','Открылось.',1.8);
+        showSub('Вы','Открылось.',1.8);sayE('Открылось.');
       }else{
         sndBeep(180);KP.buf='';kpDraw();
         document.getElementById('kpdisp').textContent='— — — —';
@@ -1783,9 +1778,9 @@ function startPrison(){
   bossMesh.position.set(PR.cage.x+7,0,PR.cage.z+2.4);
   bossMesh.rotation.set(0,-Math.PI/2,0);
   PR.intro=0.001;
-  setTimeout(function(){showSub('Вы','Где я...',2.2);say('Где я.',0.8,0.5);},1600);
+  setTimeout(function(){showSub('Вы','Где я...',2.2);sayE('Где я...');},1600);
   setTimeout(function(){questShow('Выберитесь из клетки','Ключ где-то рядом');},4000);
-  setTimeout(function(){showSub('Вы','Он ходит там. Надо тихо.',2.8);},5200);
+  setTimeout(function(){showSub('Вы','Он ходит там. Надо тихо.',2.8);sayE('Он ходит там. Надо тихо.');},5200);
 }
 function updatePrison(dt){
   if(PR.intro>0){
@@ -1937,7 +1932,7 @@ function updateVent(dt){
     var d=Math.abs(P.z-VT.spider.position.z);
     if(d<3.2&&!VT.warned){
       VT.warned=true;
-      showSub('Вы','Там что-то шевелится.',2.4);
+      showSub('Вы','Там что-то шевелится.',2.4);sayE('Там что-то шевелится.');
       sndSkitter();
     }
     // подползает навстречу
@@ -1976,8 +1971,7 @@ function ventHit(){
     }
     sndCrunch();
     setPrompt('',false);
-    showSub('Вы','Ненавижу пауков.',2.4);
-    say('Ненавижу пауков.',0.85,0.55);
+    showSub('Вы','Ненавижу пауков.',2.4);sayE('Ненавижу пауков.');
     setTimeout(function(){showMsg('Впереди свет',2.4);},2600);
   }else{
     showMsg('Ещё!',1.0);
@@ -2202,7 +2196,7 @@ function startWarehouse(){
   document.getElementById('black').style.transition='opacity 1.5s';
   document.getElementById('black').style.opacity='0';
   SearchMusic.start();          // играет, пока ищем коробки
-  setTimeout(function(){showSub('Вы','Сколько же их...',2.6);say('Сколько же их.',0.8,0.5);},1600);
+  setTimeout(function(){showSub('Вы','Сколько же их...',2.6);sayE('Сколько же их...');},1600);
   setTimeout(function(){showMsg('Они не видят и не слышат. Но пол тонкий.',4.0);},4600);
   setTimeout(function(){showMsg('Иди сидя. И не стой рядом — они чуют тепло.',4.0);},9000);
   setTimeout(function(){questShow('Соберите четыре куска карты','Коробки помечены жёлтой лентой');},11500);
@@ -2428,7 +2422,7 @@ function assembleMap(){
     ov.style.display='none';
     WH.taped=true;whHUD();
     SearchMusic.stop();         // карта собрана — поиск закончен, музыка уходит
-    showSub('Вы','Теперь понятно, куда идти.',2.6);
+    showSub('Вы','Теперь понятно, куда идти.',2.6);sayE('Теперь понятно, куда идти.');
     spawnArrow();
   },5000);
 }
@@ -2674,10 +2668,9 @@ function startHall(){
   HL.chaser=createBossMesh();HL.chaser.position.set(0,0,6);
   HL.chaser.visible=false;scene.add(HL.chaser);objs.push(HL.chaser);
   HL.cz=6;HL.cspd=0.046;
-  setTimeout(function(){showSub('Вы','Какой высокий...',2.4);say('Какой высокий.',0.8,0.5);},1800);
+  setTimeout(function(){showSub('Вы','Какой высокий...',2.4);sayE('Какой высокий...');},1800);
   setTimeout(function(){
-    showSub('Вы','Их что, двое? И они... огромные.',3.2);
-    say('Их двое. И они огромные.',0.8,0.5);
+    showSub('Вы','Их что, двое? И они... огромные.',3.2);sayE('Их что, двое? И они... огромные.');
   },6000);
   setTimeout(function(){
     HL.started=true;HL.chaser.visible=true;
@@ -2962,7 +2955,7 @@ function startShelter(){
   document.getElementById('black').style.transition='opacity 1.8s';
   document.getElementById('black').style.opacity='0';
   document.getElementById('dream').style.display='none';
-  setTimeout(function(){showSub('Вы','Улица... я на улице.',2.8);say('Улица. Я на улице.',0.85,0.55);},2000);
+  setTimeout(function(){showSub('Вы','Улица... я на улице.',2.8);sayE('Улица... я на улице.');},2000);
   setTimeout(function(){showMsg('Посмотри наверх',3.0);},6000);
   setTimeout(function(){questShow('Осмотрите потолок');},6200);
 }
@@ -2984,12 +2977,10 @@ function updateShelter(dt){
   // разоблачение: игрок задирает голову к «небу»
   if(!SH2.revealed&&P.pitch>0.34&&SH2.t>5){
     SH2.revealed=true;questDone();
-    showSub('Вы','Это... потолок. Это нарисовано.',3.6);
-    say('Это потолок. Это нарисовано.',0.78,0.48);
+    showSub('Вы','Это... потолок. Это нарисовано.',3.6);sayE('Это... потолок. Это нарисовано.');
     sndDread();
     setTimeout(function(){
-      showSub('Вы','Тут был приют? Нет... тут просто продавали детские вещи.',4.6);
-      say('Тут просто продавали детские вещи.',0.8,0.5);
+      showSub('Вы','Тут был приют? Нет... тут просто продавали детские вещи.',4.6);sayE('Тут был приют? Нет... тут просто продавали детские вещи.');
     },4200);
     setTimeout(function(){showMsg('Ты вышел из тюрьмы. Но не из магазина.',4.0);},9400);
   }
@@ -3010,12 +3001,11 @@ function shelterNear(){
 function shelterAct(){
   if(nSh==='slide'){
     if(!SH2.revealed){
-      showSub('Вы','Сначала осмотрюсь.',2.0);
+      showSub('Вы','Сначала осмотрюсь.',2.0);sayE('Сначала осмотрюсь.');
       return;
     }
     setPrompt('',false);
-    showSub('Вы','С этой трубой что-то не так.',2.6);
-    say('С этой трубой что-то не так.',0.8,0.5);
+    showSub('Вы','С этой трубой что-то не так.',2.6);sayE('С этой трубой что-то не так.');
     setTimeout(function(){
       document.getElementById('black').style.transition='opacity 0.9s';
       document.getElementById('black').style.opacity='1';
@@ -3080,9 +3070,9 @@ function startTube(){
   document.getElementById('black').style.transition='opacity 0.8s';
   document.getElementById('black').style.opacity='0';
   say('Ладно... поехали.',0.9,0.6);
-  setTimeout(function(){showSub('Вы','Что-то долго.',2.2);},4200);
-  setTimeout(function(){showSub('Вы','Почему я всё ещё еду?!',2.6);say('Почему я всё ещё еду?',1.15,0.8);},7600);
-  setTimeout(function(){showSub('Вы','Это не горка. Это не горка!',3.0);say('Это не горка!',1.25,0.85);},11200);
+  setTimeout(function(){showSub('Вы','Что-то долго.',2.2);sayE('Что-то долго.');},4200);
+  setTimeout(function(){showSub('Вы','Почему я всё ещё еду?!',2.6);sayE('Почему я всё ещё еду?!');},7600);
+  setTimeout(function(){showSub('Вы','Зря я сюда скатился! Кажись, это не горка! Да, это не горка!!!',4.8);sayE('Зря я сюда скатился! Кажись, это не горка! Да, это не горка!!!');},11200);
 }
 
 function updateTube(dt){
@@ -3439,7 +3429,7 @@ function startOldStore(){
   document.getElementById('black').style.transition='opacity 2.2s';
   document.getElementById('black').style.opacity='0';
   Music.stop();
-  setTimeout(function(){showSub('Вы','Где... где я теперь.',2.8);say('Где я теперь.',0.78,0.48);},2400);
+  setTimeout(function(){showSub('Вы','Где... где я теперь.',2.8);sayE('Где... где я теперь.');},2400);
   setTimeout(function(){showMsg('Там что-то светит. Впереди.',3.2);},6200);
   setTimeout(function(){questShow('Найдите фонарь','Он светится впереди');},6400);
 }
@@ -3493,8 +3483,7 @@ function osAct(){
     document.getElementById('batwrap').style.display='block';
     document.getElementById('bfl').style.display='flex';
     sndPickup();
-    showSub('Вы','О! Новый фонарик! Настоящий, не то что тот, старый.',3.6);
-    say('О. Новый фонарик.',0.95,0.7);
+    showSub('Вы','О! Новый фонарик! Настоящий, не то что тот, старый.',3.6);sayE('О! Новый фонарик! Настоящий, не то что тот, старый.');
     setTimeout(function(){showMsg('Батарея садится. Ищи запасные.',3.4);},3400);
   }
   else if(nOs.t==='bat'){
@@ -3624,12 +3613,12 @@ function nextRoom(){
   document.getElementById('bfl').style.display=FL2.has?'flex':'none';
   document.getElementById('black').style.transition='opacity 1.4s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Опять склад? Тот же самый?',2.8);say('Опять склад.',0.8,0.5);},1800);
+  setTimeout(function(){showSub('Вы','Опять склад? Тот же самый?',2.8);sayE('Опять склад? Тот же самый?');},1800);
   setTimeout(function(){showMsg('Вопрос другой. Читай внимательно.',3.4);},5200);
 }
 function finishOldStore(){
   camera.up.set(0,1,0);camera.rotation.z=0;
-  showSub('Вы','Ответил правильно. Значит, я не человек?',3.2);
+  showSub('Вы','Ответил правильно. Значит, я не человек?',3.2);sayE('Ответил правильно. Значит, я не человек?');
   setTimeout(startGas,1600);          // скатились в комнату с газом
 }
 // ============================================================
@@ -3684,8 +3673,8 @@ function startGas(){
   document.getElementById('black').style.transition='opacity 1.2s';
   document.getElementById('black').style.opacity='0';
   sndHiss();
-  setTimeout(function(){showSub('Вы','Что это... газ?',2.4);say('Что это. Газ.',0.85,0.55);},1400);
-  setTimeout(function(){showSub('Вы','Не могу... стоять...',2.6);say('Не могу стоять.',0.6,0.4);},5200);
+  setTimeout(function(){showSub('Вы','Что это... газ?',2.4);sayE('Что это... газ?');},1400);
+  setTimeout(function(){showSub('Вы','Не могу... стоять...',2.6);sayE('Не могу... стоять...');},5200);
 }
 function updateGas(dt){
   if(!GAS.on)return;
@@ -3784,7 +3773,7 @@ function startDream1(){
   document.getElementById('dream').style.display='block';
   document.getElementById('black').style.transition='opacity 2.4s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Стоп. Это же... первый этаж.',3.0);say('Это же первый этаж.',0.8,0.5);},2600);
+  setTimeout(function(){showSub('Вы','Стоп. Это же... первый этаж.',3.0);sayE('Стоп. Это же... первый этаж.');},2600);
   setTimeout(function(){showMsg('Лестница. Она сломана.',3.0);},7000);
 }
 function updateDream1(dt){
@@ -3875,10 +3864,9 @@ function startWake(){
   dead=false;WK.on=true;WK.t=0;WK.arrived=false;WK.called=false;
   document.getElementById('black').style.transition='opacity 1.8s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Опять... опять этот сон.',2.8);say('Опять этот сон.',0.72,0.45);},2200);
+  setTimeout(function(){showSub('Вы','Опять... опять этот сон.',2.8);sayE('Опять... опять этот сон.');},2200);
   setTimeout(function(){
-    showSub('Вы','То, что позади — может вернуться.',3.2);
-    say('То что позади может вернуться.',0.72,0.45);
+    showSub('Вы','То, что позади — может вернуться.',3.2);sayE('То, что позади — может вернуться.');
   },6000);
 }
 function updateWake(dt){
@@ -4343,8 +4331,8 @@ function startCandleRoom(){
   if(TC)TC.on=false;
   document.getElementById('black').style.transition='opacity 2.0s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Живой... кажется.',2.4);say('Живой. Кажется.',0.7,0.45);},2400);
-  setTimeout(function(){showSub('Вы','Свечи. Кто-то их зажёг.',2.8);say('Свечи. Кто-то их зажёг.',0.8,0.5);},6400);
+  setTimeout(function(){showSub('Вы','Живой... кажется.',2.4);sayE('Живой... кажется.');},2400);
+  setTimeout(function(){showSub('Вы','Свечи. Кто-то их зажёг.',2.8);sayE('Свечи. Кто-то их зажёг.');},6400);
   setTimeout(function(){questShow('Найдите выход из комнаты');},7000);
 }
 function updateCandleRoom(dt){
@@ -4467,8 +4455,7 @@ function startFork(){
   document.getElementById('black').style.transition='opacity 1.4s';
   document.getElementById('black').style.opacity='0';
   setTimeout(function(){
-    showSub('Вы','Это же... тот самый грузовик.',3.0);
-    say('Это тот самый грузовик.',0.8,0.5);
+    showSub('Вы','Это же... тот самый грузовик.',3.0);sayE('Это же... тот самый грузовик.');
   },2600);
   setTimeout(function(){showMsg('Налево или направо',2.6);},6600);
   setTimeout(function(){questShow('Найдите проход дальше','Одна из дверей открыта');},6800);
@@ -4493,8 +4480,7 @@ function fkAct(){
   if(nFk==='left'){
     if(!FK.tried){
       FK.tried=true;
-      showSub('Вы','Заперто. И заколочено снаружи.',2.8);
-      say('Заперто. И заколочено.',0.82,0.5);
+      showSub('Вы','Заперто. И заколочено снаружи.',2.8);sayE('Заперто. И заколочено снаружи.');
       sndCreak();
     }else showMsg('Не открыть',1.4);
     return;
@@ -5075,7 +5061,7 @@ function startUVStore(){
   uvHUD();
   document.getElementById('black').style.transition='opacity 1.6s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Ещё один склад. Сколько их тут.',3.0);},2200);
+  setTimeout(function(){showSub('Вы','Ещё один склад. Сколько их тут.',3.0);sayE('Ещё один склад. Сколько их тут.');},2200);
   setTimeout(function(){showMsg('Там что-то светится фиолетовым',3.2);},6200);
   setTimeout(function(){questShow('Найдите УФ-излучатель','Он светится фиолетовым');},6400);
 }
@@ -5156,8 +5142,7 @@ function usAct(){
     uvHUD();sndPickup();
     document.getElementById('buv').style.display='flex';
     document.getElementById('brel').style.display='flex';
-    showSub('Вы','Вот он. УФ-излучатель.',2.8);
-    say('Вот он. Ультрафиолетовый.',0.85,0.55);
+    showSub('Вы','Вот он. УФ-излучатель.',2.8);sayE('Вот он. УФ-излучатель.');
     setTimeout(function(){showMsg('Зажми 🔫 — раскроется. Отпусти — выстрел.',4.0);},3000);
     setTimeout(huntSetup,6500);        // дальше начинается поиск и ожидание гостя
   }
@@ -5360,7 +5345,7 @@ function huntAct(n){
     HN.ventOpen=true;
     if(HN.vent){HN.vent.rotation.z=0.55;HN.vent.position.y=2.9;}
     sndCreak();questDone();
-    showSub('Вы','Открутил. Лезу.',2.2);
+    showSub('Вы','Открутил. Лезу.',2.2);sayE('Открутил. Лезу.');
     setTimeout(function(){questShow('Заберитесь в вентиляцию');},2100);
   }
   else if(n.t==='climb'){
@@ -5369,7 +5354,7 @@ function huntAct(n){
     setTimeout(function(){
       if(HN.ladder){HN.ladder.rotation.z=1.5;HN.ladder.position.y=0.1;}
       sndCrash();
-      showSub('Вы','Лестница!.. Обратно уже не выйти.',3.0);
+      showSub('Вы','Лестница!.. Обратно уже не выйти.',3.0);sayE('Лестница!.. Обратно уже не выйти.');
     },700);
     document.getElementById('black').style.transition='opacity 1.4s';
     setTimeout(function(){document.getElementById('black').style.opacity='1';},1600);
@@ -5466,7 +5451,7 @@ function startStation(){
   document.getElementById('black').style.opacity='0';
   document.getElementById('dmg').style.opacity='0';
   questHide();
-  setTimeout(function(){showSub('Вы','Это что, станция? Внутри горы?',3.2);say('Станция. Внутри горы.',0.8,0.5);},2400);
+  setTimeout(function(){showSub('Вы','Это что, станция? Внутри горы?',3.2);sayE('Это что, станция? Внутри горы?');},2400);
   setTimeout(function(){questShow('Сядьте в вагонетку');},5600);
 }
 function updateStation(dt){
@@ -5486,7 +5471,7 @@ function stAct(){
   if(nSt!=='cart'||ST.boarded)return;
   ST.boarded=true;ST.on=false;questDone();
   setPrompt('',false);
-  showSub('Вы','Поехали.',1.8);
+  showSub('Вы','Поехали.',1.8);sayE('Поехали.');
   // двери закрываются
   var t0=performance.now();
   (function close(){
@@ -5698,7 +5683,7 @@ function cordTake(){
     if(c.material){c.material.color.setHex(CORD.carrying);c.material.emissive.setHex(CORD.carrying);}
   });
   sndPickup();
-  showSub('Вы','Шнур. Надо дотащить его до центра.',3.0);
+  showSub('Вы','Шнур. Надо дотащить его до центра.',3.0);sayE('Шнур. Надо дотащить его до центра.');
   questShow('Донесите шнур в центр купола','Он питает сердце приюта');
 }
 // узел в центре купола
@@ -5887,7 +5872,7 @@ function startToyHouse(){
   initTorch();initUV();syncGear();
   document.getElementById('black').style.transition='opacity 1.4s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Игрушки. Все на местах.',2.6);},1800);
+  setTimeout(function(){showSub('Вы','Игрушки. Все на местах.',2.6);sayE('Игрушки. Все на местах.');},1800);
   setTimeout(function(){questShow('Спуститесь в яму','Кнопку руками не продавить');},4200);
 }
 
@@ -5940,7 +5925,7 @@ function toyOpenExit(){
     TH.exitMesh.material.emissiveIntensity=1.2;
   }
   sndCreak();
-  showSub('Вы','Открылось. И свет загорелся.',3.2);
+  showSub('Вы','Открылось. И свет загорелся.',3.2);sayE('Открылось. И свет загорелся.');
   cordSpawn(0xd83a3a,11,12.5);          // включилось электричество — есть шнур
   setTimeout(function(){
     if(TH.on)questShow('Заберите шнур','Он появился, когда дали электричество');
@@ -5976,7 +5961,7 @@ function thAct(){
     var p2=TH.pits[nTh.i];
     p2.launched=true;p2.t=0;
     sndWind2();
-    showSub('Вы','Поехала!',1.6);
+    showSub('Вы','Поехала!',1.6);sayE('Поехала!');
   }
   else if(nTh.t==='cord'){cordTake();}
   else if(nTh.t==='exit'){
@@ -6128,7 +6113,7 @@ function startUVHouse(){
   initTorch();initUV();syncGear();
   document.getElementById('black').style.transition='opacity 1.4s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Тут ничего не видно. Совсем.',2.8);},1800);
+  setTimeout(function(){showSub('Вы','Тут ничего не видно. Совсем.',2.8);sayE('Тут ничего не видно. Совсем.');},1800);
   setTimeout(function(){questShow('Засветите три метки','Стреляйте ультрафиолетом в стены');},4000);
 }
 
@@ -6179,7 +6164,7 @@ function uvOpenInner(){
   var wi=walls.indexOf(UH.innerWall);
   if(wi>=0)walls.splice(wi,1);
   sndCreak();questDone();
-  showSub('Вы','Метки сошлись. Дверь поднялась.',3.0);
+  showSub('Вы','Метки сошлись. Дверь поднялась.',3.0);sayE('Метки сошлись. Дверь поднялась.');
   setTimeout(function(){
     if(UH.on)questShow('Дотолкайте куб до плиты','Луч ультрафиолета толкает его');
   },2400);
@@ -6192,7 +6177,7 @@ function uvOpenExit(){
     UH.exitMesh.material.emissiveIntensity=1.2;
   }
   sndCreak();questDone();
-  showSub('Вы','Плита сработала. И свет дали.',3.0);
+  showSub('Вы','Плита сработала. И свет дали.',3.0);sayE('Плита сработала. И свет дали.');
   cordSpawn(0x6a5cff,20.0,4.0);
   setTimeout(function(){
     if(UH.on)questShow('Заберите шнур');
@@ -6400,7 +6385,7 @@ function startThrone(){
   document.getElementById('black').style.transition='opacity 2.4s';
   document.getElementById('black').style.opacity='0';
   Music.escape();Music.setLevel(0.42);
-  setTimeout(function(){showSub('Вы','Это... тронный зал?',2.6);},2200);
+  setTimeout(function(){showSub('Вы','Это... тронный зал?',2.6);sayE('Это... тронный зал?');},2200);
 }
 function updateThrone(dt){
   if(!TR2.on)return;
@@ -6504,7 +6489,7 @@ function updateThrone(dt){
   if(t>TT.look&&TR2.step===8){
     TR2.step=9;
     TR2.ally.position.y=0;
-    showSub('Вы','Ты точно мебельщик?',2.6);
+    showSub('Вы','Ты точно мебельщик?',2.6);sayE('Ты точно мебельщик?');
   }
   if(t>TT.q1&&TR2.step===9){
     TR2.step=10;
@@ -6598,9 +6583,9 @@ function updateSecretCollapse(dt){
   if(kf>=1&&!SECRET2.fell){
     SECRET2.fell=true;SECRET2.stage=2;
     if(typeof sndCrash==='function')sndCrash();
-    showSub('Вы','Что... что я наделал?',3.0);
-    setTimeout(function(){showSub('Вы','У него на поясе два ключа. Этот — не мой размер, не берётся.',4.4);},3200);
-    setTimeout(function(){showSub('Вы','А вот этот, поменьше — беру.',3.0);},8000);
+    showSub('Вы','Что... что я наделал?',3.0);sayE('Что... что я наделал?');
+    setTimeout(function(){showSub('Вы','У него на поясе два ключа. Этот — не мой размер, не берётся.',4.4);sayE('У него на поясе два ключа. Этот — не мой размер, не берётся.');},3200);
+    setTimeout(function(){showSub('Вы','А вот этот, поменьше — беру.',3.0);sayE('А вот этот, поменьше — беру.');},8000);
     setTimeout(startSecretTruck,11500);
   }
 }
@@ -6804,7 +6789,7 @@ function startSecretRoom(){
     PHASE='secret2';SECRET2.stage=6;SECRET2.t=0;
     document.getElementById('black').style.transition='opacity 2.0s';
     document.getElementById('black').style.opacity='0';
-    setTimeout(function(){showSub('Вы','Что это...',2.4);},2200);
+    setTimeout(function(){showSub('Вы','Что это...',2.4);sayE('Что это...');},2200);
     setTimeout(function(){showMsg('Он сканирует, а не смотрит. Не шуми.',3.4);},5200);
     setTimeout(triggerBetrayal,9500);
   });
@@ -6863,12 +6848,12 @@ function askQuestion(){
   },3800);
 }
 function answerA(){
-  showSub('Вы','Я пришёл узнать, что здесь произошло.',3.0);
+  showSub('Вы','Я пришёл узнать, что здесь произошло.',3.0);sayE('Я пришёл узнать, что здесь произошло.');
   setTimeout(function(){
     showSub('Синий','Зачем?',2.0);sayE('Зачем?');
   },3200);
   setTimeout(function(){
-    showSub('Вы','Сотрудники здесь пропали. Мне нужно узнать, что произошло.',4.2);
+    showSub('Вы','Сотрудники здесь пропали. Мне нужно узнать, что произошло.',4.2);sayE('Сотрудники здесь пропали. Мне нужно узнать, что произошло.');
   },5400);
   setTimeout(function(){
     showSub('Синий','Всё. Хорошо.',2.4);sayE('Всё. Хорошо.');
@@ -6876,7 +6861,7 @@ function answerA(){
   setTimeout(goToBase,12800);
 }
 function answerB(){
-  showSub('Вы','Я сам жалею, что сюда пришёл.',3.0);
+  showSub('Вы','Я сам жалею, что сюда пришёл.',3.0);sayE('Я сам жалею, что сюда пришёл.');
   setTimeout(function(){
     showSub('Синий','А почему ты не догадывался?',3.0);
     sayE('А почему ты не догадывался?');
@@ -6964,7 +6949,7 @@ function startBase(){
   document.getElementById('black').style.transition='opacity 2.0s';
   document.getElementById('black').style.opacity='0';
   setTimeout(function(){showSub('Синий','Здесь нас не найдут. Пока что.',3.4);sayE('Здесь нас не найдут. Пока что.');},2400);
-  setTimeout(function(){showSub('Вы','База... Значит, вас тут несколько.',3.2);},6600);
+  setTimeout(function(){showSub('Вы','База... Значит, вас тут несколько.',3.2);sayE('База... Значит, вас тут несколько.');},6600);
   setTimeout(function(){showMsg('ПРОДОЛЖЕНИЕ СЛЕДУЕТ',4.0);},10500);
 }
 // ============================================================
@@ -6989,7 +6974,7 @@ function startCandleReturn(){
   document.getElementById('black').style.opacity='0';
   questHide();
   setTimeout(function(){
-    showSub('Вы','Это же та комната. Со свечами.',3.0);
+    showSub('Вы','Это же та комната. Со свечами.',3.0);sayE('Это же та комната. Со свечами.');
   },2200);
 }
 var CT2={l1:6.0,l2:10.0,l3:14.5,l4:19.0,key:23.0};
@@ -7006,7 +6991,7 @@ function updateCandleReturn(dt){
   }
   if(t>CT2.l1&&CN2.step===0){
     CN2.step=1;
-    showSub('Вы','Стоп. Лестница же упала. Обратно через вентиляцию не выйти.',4.4);
+    showSub('Вы','Стоп. Лестница же упала. Обратно через вентиляцию не выйти.',4.4);sayE('Стоп. Лестница же упала. Обратно через вентиляцию не выйти.');
   }
   if(t>CT2.l2&&CN2.step===1){
     CN2.step=2;
@@ -7050,7 +7035,7 @@ function cn2Act(){
   CN2.opened=true;CN2.on=false;questDone();
   sndCreak();
   if(CN.hatch){CN.hatch.rotation.z=-1.1;CN.hatch.position.y=0.35;}
-  showSub('Вы','Открылся. Там темно.',2.8);
+  showSub('Вы','Открылся. Там темно.',2.8);sayE('Открылся. Там темно.');
   setTimeout(function(){
     document.getElementById('black').style.transition='opacity 1.2s';
     document.getElementById('black').style.opacity='1';
@@ -7145,7 +7130,7 @@ function startBasement(){
   if(FL2.has)FL2.on=true;
   document.getElementById('black').style.transition='opacity 2.0s';
   document.getElementById('black').style.opacity='0';
-  setTimeout(function(){showSub('Вы','Подвал. Тут ничего не видно.',3.0);},2200);
+  setTimeout(function(){showSub('Вы','Подвал. Тут ничего не видно.',3.0);sayE('Подвал. Тут ничего не видно.');},2200);
   setTimeout(function(){
     questShow('Дотолкайте куб до плиты','Луч ультрафиолета его двигает');
   },5200);
@@ -7193,7 +7178,7 @@ function bsOpenExit(){
     BS.exitMesh.material.emissiveIntensity=1.2;
   }
   sndCreak();questDone();
-  showSub('Вы','Открылось. Дальше — вниз.',3.0);
+  showSub('Вы','Открылось. Дальше — вниз.',3.0);sayE('Открылось. Дальше — вниз.');
   setTimeout(function(){ if(BS.on)questShow('Идите к выходу'); },2400);
 }
 var nBs=null;
@@ -7321,9 +7306,9 @@ function startDome(back){
   document.getElementById('black').style.opacity='0';
   DomeMusic.start();
   if(!back){
-    setTimeout(function(){showSub('Вы','Опять приют. Только... под землёй.',3.4);say('Опять приют. Под землёй.',0.78,0.48);},2600);
+    setTimeout(function(){showSub('Вы','Опять приют. Только... под землёй.',3.4);sayE('Опять приют. Только... под землёй.');},2600);
     setTimeout(function(){
-      showSub('Вы','Наверху что-то ходит. Железное.',3.2);
+      showSub('Вы','Наверху что-то ходит. Железное.',3.2);sayE('Наверху что-то ходит. Железное.');
       sndSteel();
     },7200);
   }
@@ -7369,8 +7354,7 @@ function updateDome(dt){
   } else if(DM.reached) setPrompt('',false);
   if(!DM.reached&&Math.hypot(P.x,P.z)<4.2&&DM.t>4){
     DM.reached=true;questDone();
-    showSub('Вы','Это сердце приюта. Отсюда управляют всем.',4.0);
-    say('Это сердце приюта. Отсюда управляют всем.',0.8,0.5);
+    showSub('Вы','Это сердце приюта. Отсюда управляют всем.',4.0);sayE('Это сердце приюта. Отсюда управляют всем.');
     setTimeout(function(){
       var tgt=houseTarget();
       if(tgt)questShow(tgt.task,tgt.hint);
@@ -7563,7 +7547,76 @@ var VOICE_LINES={
   'Там охрана. Наши. Тебя убьют как только увидят.':'siniy_11',
   'Я пройду и подставлю тебе лестницу.':'siniy_12',
   'Держи. Это от люка.':'siniy_13',
-  'Вот ты и попался.':'siniy_14'
+  'Вот ты и попался.':'siniy_14',
+  'Да, я охранник. Что-то случилось?':'you_01',
+  'Да... реально пахнет как мясо.':'you_02',
+  'Фух... убежал.':'you_03',
+  'Ключ. Прямо у решётки. Он что, обронил?':'you_04',
+  'Маленький ключик. В книге вырезана дырка.':'you_05',
+  'Просто книги.':'you_06',
+  'Почему он так любит сейфы?':'you_07',
+  'Отвёртка. Он держал в сейфе... отвёртку.':'you_08',
+  'Открылось.':'you_09',
+  'Где я...':'you_10',
+  'Он ходит там. Надо тихо.':'you_11',
+  'Там что-то шевелится.':'you_12',
+  'Ненавижу пауков.':'you_13',
+  'Сколько же их...':'you_14',
+  'Теперь понятно, куда идти.':'you_15',
+  'Какой высокий...':'you_16',
+  'Их что, двое? И они... огромные.':'you_17',
+  'Улица... я на улице.':'you_18',
+  'Это... потолок. Это нарисовано.':'you_19',
+  'Тут был приют? Нет... тут просто продавали детские вещи.':'you_20',
+  'Сначала осмотрюсь.':'you_21',
+  'С этой трубой что-то не так.':'you_22',
+  'Что-то долго.':'you_23',
+  'Почему я всё ещё еду?!':'you_24',
+  'Зря я сюда скатился! Кажись, это не горка! Да, это не горка!!!':'you_25',
+  'Где... где я теперь.':'you_26',
+  'О! Новый фонарик! Настоящий, не то что тот, старый.':'you_27',
+  'Опять склад? Тот же самый?':'you_28',
+  'Ответил правильно. Значит, я не человек?':'you_29',
+  'Что это... газ?':'you_30',
+  'Не могу... стоять...':'you_31',
+  'Стоп. Это же... первый этаж.':'you_32',
+  'Опять... опять этот сон.':'you_33',
+  'То, что позади — может вернуться.':'you_34',
+  'Живой... кажется.':'you_35',
+  'Свечи. Кто-то их зажёг.':'you_36',
+  'Это же... тот самый грузовик.':'you_37',
+  'Заперто. И заколочено снаружи.':'you_38',
+  'Ещё один склад. Сколько их тут.':'you_39',
+  'Вот он. УФ-излучатель.':'you_40',
+  'Открутил. Лезу.':'you_41',
+  'Лестница!.. Обратно уже не выйти.':'you_42',
+  'Это что, станция? Внутри горы?':'you_43',
+  'Поехали.':'you_44',
+  'Шнур. Надо дотащить его до центра.':'you_45',
+  'Игрушки. Все на местах.':'you_46',
+  'Открылось. И свет загорелся.':'you_47',
+  'Поехала!':'you_48',
+  'Тут ничего не видно. Совсем.':'you_49',
+  'Метки сошлись. Дверь поднялась.':'you_50',
+  'Плита сработала. И свет дали.':'you_51',
+  'Это... тронный зал?':'you_52',
+  'Ты точно мебельщик?':'you_53',
+  'Что... что я наделал?':'you_54',
+  'У него на поясе два ключа. Этот — не мой размер, не берётся.':'you_55',
+  'А вот этот, поменьше — беру.':'you_56',
+  'Что это...':'you_57',
+  'Я пришёл узнать, что здесь произошло.':'you_58',
+  'Сотрудники здесь пропали. Мне нужно узнать, что произошло.':'you_59',
+  'Я сам жалею, что сюда пришёл.':'you_60',
+  'База... Значит, вас тут несколько.':'you_61',
+  'Это же та комната. Со свечами.':'you_62',
+  'Стоп. Лестница же упала. Обратно через вентиляцию не выйти.':'you_63',
+  'Открылся. Там темно.':'you_64',
+  'Подвал. Тут ничего не видно.':'you_65',
+  'Открылось. Дальше — вниз.':'you_66',
+  'Опять приют. Только... под землёй.':'you_67',
+  'Наверху что-то ходит. Железное.':'you_68',
+  'Это сердце приюта. Отсюда управляют всем.':'you_69'
 };
 var VOICE_CACHE={};
 function sayE(txt){
