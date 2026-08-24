@@ -7542,7 +7542,45 @@ function getAC(){
   if(AC&&AC.state==='suspended')try{AC.resume();}catch(e){}
   return AC;
 }
+// Заранее сгенерированные реплики (Fish Audio S2.1 Pro) — см. MASTERPLAN.md,
+// осознанное исключение из «ноль внешних файлов», как и icons/skins/*.png (Этап 21).
+// Ключ — точный текст, который передаётся в sayE(); новых реплик без записи
+// в этой таблице озвучка не коснётся — упадёт на старый speechSynthesis.
+var VOICE_LINES={
+  'О, куда ты пошёл? Давай я с тобой.':'furnitureman_01',
+  'Ты думал, ты убежал?':'furnitureman_02',
+  'Я чую. Я думал, он здесь.':'furnitureman_03',
+  'Да. Я один из мебельщиков.':'siniy_01',
+  'И я буду твоим союзником. Я знаю куда идти.':'siniy_02',
+  'А-а!':'siniy_03',
+  'Что ты делаешь в заброшенном магазине?':'siniy_04',
+  'Зачем?':'siniy_05',
+  'Всё. Хорошо.':'siniy_06',
+  'А почему ты не догадывался?':'siniy_07',
+  'Понятно.':'siniy_08',
+  'Здесь нас не найдут. Пока что.':'siniy_09',
+  'Ты нет. Я пойду другим путём.':'siniy_10',
+  'Там охрана. Наши. Тебя убьют как только увидят.':'siniy_11',
+  'Я пройду и подставлю тебе лестницу.':'siniy_12',
+  'Держи. Это от люка.':'siniy_13',
+  'Вот ты и попался.':'siniy_14'
+};
+var VOICE_CACHE={};
 function sayE(txt){
+  var id=VOICE_LINES[txt];
+  if(id){
+    try{
+      var a=VOICE_CACHE[id];
+      if(!a){a=new Audio('audio/voice/part2/'+id+'.mp3');VOICE_CACHE[id]=a;}
+      else{a.pause();a.currentTime=0;}
+      var p=a.play();
+      if(p&&p.catch)p.catch(function(){sayEFallback(txt);});
+      return;
+    }catch(e){}
+  }
+  sayEFallback(txt);
+}
+function sayEFallback(txt){
   if(!window.speechSynthesis)return;
   try{var u=new SpeechSynthesisUtterance(txt);u.lang='ru-RU';u.rate=0.72;u.pitch=0.1;speechSynthesis.speak(u);}catch(e){}
 }
