@@ -6556,7 +6556,7 @@ function sndAllyShot(){
 //  Всё, что здесь начато, полностью заменяет обычный финал тронного
 //  зала — TR2.asked=true гасит обычную ветку насовсем.
 // ============================================================
-var SECRET2={on:false,stage:0,t:0,fell:false,truck:null,glassBroken:false,monster:null};
+var SECRET2={on:false,stage:0,t:0,fell:false,truck:null,glassBroken:false,rearGlassBroken:false,monster:null};
 
 function throneAllyShot(){
   if(!(TR2.walking&&TR2.ally)||TR2.asked||SECRET2.on)return;
@@ -6601,6 +6601,9 @@ function makeSecTruck(){
   cab.position.set(0,1.35,3.0);g.add(cab);
   var glass=new THREE.Mesh(new THREE.PlaneGeometry(1.4,0.9),glassM);
   glass.position.set(0,1.75,4.21);g.add(glass);g.userData.glass=glass;
+  // заднее окошко кабины — второй рубеж на пути из кабины в кузов
+  var glassRear=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.7),glassM);
+  glassRear.position.set(0,1.7,1.79);glassRear.rotation.y=Math.PI;g.add(glassRear);g.userData.glassRear=glassRear;
   // кузов
   var bed=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.0,5.2),dark);
   bed.position.set(0,1.4,-0.2);g.add(bed);
@@ -6653,12 +6656,16 @@ function secretNear(){
     var target=SECRET2.glassBroken?[tx,tz+2.6]:[tx,tz+4.0];
     var d=Math.hypot(P.x-target[0],P.z-target[1]);
     if(d<1.8)nSec2=SECRET2.glassBroken?{t:'climb'}:{t:'glass'};
+  }else if(SECRET2.stage===3.5){
+    var d15=Math.hypot(P.x-tx,P.z-(tz+1.9));
+    if(d15<1.6)nSec2=SECRET2.rearGlassBroken?{t:'intoBed'}:{t:'rearglass'};
   }else if(SECRET2.stage===4){
     var d2=Math.hypot(P.x-tx,P.z-(tz-2.4));
     if(d2<1.8)nSec2={t:'door'};
   }
   if(nSec2){
-    setPrompt({glass:'👊 РАЗБИТЬ СТЕКЛО — E',climb:'⬆ ЗАЛЕЗТЬ В КУЗОВ — E',
+    setPrompt({glass:'👊 РАЗБИТЬ СТЕКЛО — E',climb:'⬆ ЗАЛЕЗТЬ В КАБИНУ — E',
+      rearglass:'👊 РАЗБИТЬ ЗАДНЕЕ СТЕКЛО — E',intoBed:'⬆ ПЕРЕЛЕЗТЬ В КУЗОВ — E',
       door:'🚪 ОТКРЫТЬ ДВЕРЬ — E'}[nSec2.t],true);
   }else setPrompt('',false);
 }
@@ -6670,13 +6677,25 @@ function secret2Act(){
     if(typeof sndCrash==='function')sndCrash();
     showMsg('Стекло разбито',1.8);setPrompt('',false);
   }else if(nSec2.t==='climb'){
+    SECRET2.stage=3.5;
+    P.x=SECRET2.truck.position.x;P.z=SECRET2.truck.position.z+2.6;P.yaw=Math.PI;
+    showSub('Вы','Залез в кабину. Дальше — через кузов.',2.8);sayE('Залез в кабину. Дальше — через кузов.');
+    setPrompt('',false);
+  }else if(nSec2.t==='rearglass'){
+    SECRET2.rearGlassBroken=true;
+    if(SECRET2.truck.userData.glassRear)SECRET2.truck.userData.glassRear.visible=false;
+    if(typeof sndCrash==='function')sndCrash();
+    showMsg('Заднее стекло разбито',1.8);setPrompt('',false);
+  }else if(nSec2.t==='intoBed'){
     SECRET2.stage=4;
     P.x=SECRET2.truck.position.x;P.z=SECRET2.truck.position.z-1.6;P.yaw=Math.PI;
     showMsg('Внутри кузова темно... а вот и дверь.',2.8);setPrompt('',false);
     questShow('Найти секретную дверь','Она в конце кузова');
   }else if(nSec2.t==='door'){
     setPrompt('',false);
-    startSecretRoom();
+    showSub('Вы','Это какая-то дверь. Может быть, подойдёт мой ключ, который я взял?',4.4);
+    sayE('Это какая-то дверь. Может быть, подойдёт мой ключ, который я взял?');
+    setTimeout(startSecretRoom,3600);
   }
 }
 function updateSecret2(dt){
@@ -6789,6 +6808,7 @@ function startSecretRoom(){
     PHASE='secret2';SECRET2.stage=6;SECRET2.t=0;
     document.getElementById('black').style.transition='opacity 2.0s';
     document.getElementById('black').style.opacity='0';
+    setTimeout(function(){showMsg('ОН СЛЕДИТ ЗА ТОБОЙ.',3.0);},800);
     setTimeout(function(){showSub('Вы','Что это...',2.4);sayE('Что это...');},2200);
     setTimeout(function(){showMsg('Он сканирует, а не смотрит. Не шуми.',3.4);},5200);
     setTimeout(triggerBetrayal,9500);
@@ -7616,7 +7636,9 @@ var VOICE_LINES={
   'Открылось. Дальше — вниз.':'you_66',
   'Опять приют. Только... под землёй.':'you_67',
   'Наверху что-то ходит. Железное.':'you_68',
-  'Это сердце приюта. Отсюда управляют всем.':'you_69'
+  'Это сердце приюта. Отсюда управляют всем.':'you_69',
+  'Залез в кабину. Дальше — через кузов.':'you_70',
+  'Это какая-то дверь. Может быть, подойдёт мой ключ, который я взял?':'you_71'
 };
 var VOICE_CACHE={};
 function sayE(txt){
