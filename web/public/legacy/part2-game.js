@@ -2956,6 +2956,23 @@ function fl2InspectToggle(){
   }
 }
 
+// Покачивание рук (фонарь + УФ-пистолет) при ходьбе/повороте — раньше
+// оба предмета были жёстко прибиты к экрану (только вертикальный
+// подъём/опускание при доставании). Общая функция, чтобы оба предмета
+// качались одинаково и не расходились друг с другом.
+var HSW={bob:0,idleT:0,prevYaw:undefined,swayX:0,bx:0,by:0};
+function updateHandSway(dt){
+  var moving=(Math.abs(jmx)+Math.abs(jmy)>0.08)||K['KeyW']||K['KeyS']||K['KeyA']||K['KeyD'];
+  var run=mRun||K['ShiftLeft']||K['ShiftRight'];
+  HSW.bob+=moving?dt*(run?11.5:7):0;
+  HSW.idleT+=dt;
+  if(moving){HSW.bx=Math.sin(HSW.bob)*0.016;HSW.by=Math.abs(Math.cos(HSW.bob))*0.013;}
+  else{HSW.bx=Math.sin(HSW.idleT*0.7)*0.0035;HSW.by=Math.sin(HSW.idleT*1.1)*0.0025;}
+  if(HSW.prevYaw===undefined)HSW.prevYaw=P.yaw;
+  var yd=P.yaw-HSW.prevYaw;HSW.prevYaw=P.yaw;
+  HSW.swayX=Math.max(-0.05,Math.min(0.05,HSW.swayX*0.82-yd*0.9));
+}
+
 function updateTorch(dt){
   if(!FL2.light)return;
   var ibtn=document.getElementById('fl2-inspect-btn');
@@ -2992,7 +3009,7 @@ function updateTorch(dt){
   if(!FL2.on&&FL2.offT>0){FL2.offT-=dt;if(FL2.offT<=0)FL2.shown=false;}
   var tgt=FL2.shown?-0.26:-0.95;
   FL2.y=(FL2.y===undefined?tgt:FL2.y)+((tgt-(FL2.y===undefined?tgt:FL2.y))*Math.min(1,dt*7));
-  if(FL2.view)FL2.view.position.set(-0.30,FL2.y,-0.50);
+  if(FL2.view)FL2.view.position.set(-0.30+HSW.bx+HSW.swayX,FL2.y+HSW.by,-0.50);
   var bf=document.getElementById('batfill');
   if(bf){
     bf.style.width=(FL2.charge*100).toFixed(0)+'%';
@@ -4785,8 +4802,8 @@ function updateUV(dt){
     UV.view.scale.setScalar(1);
     // при перезарядке ствол уходит вниз
     var rk=(UV.state==='reload')?Math.sin(Math.min(1,UV.reloadT/1.6)*Math.PI):0;
-    UV.view.position.set(0.30,-0.30-rk*0.16,-0.52+rk*0.05);
-    UV.view.rotation.set(0.04+rk*0.5,-0.10,rk*0.35);
+    UV.view.position.set(0.30+HSW.bx+HSW.swayX,-0.30-rk*0.16+HSW.by,-0.52+rk*0.05);
+    UV.view.rotation.set(0.04+rk*0.5,-0.10,rk*0.35+HSW.swayX*0.4);
   }
 }
 
@@ -8689,6 +8706,7 @@ function update(ts){
   var dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
   if(!started)return;
   if(PHASE==='loading'){updateLoading(dt);return;}
+  updateHandSway(dt);
   // Снаряжение живёт во всех игровых фазах. Раньше пистолет обновлялся
   // только на том складе, где его нашли, и дальше не раскрывался вообще.
   if(GEAR_PHASES[PHASE]){
