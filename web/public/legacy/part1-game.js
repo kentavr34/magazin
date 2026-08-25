@@ -552,11 +552,12 @@ function buildFloor(floorNum){
         else if(x<19&&map[z][x+1]===1)wnx=-1;
         else if(z>0&&map[z-1][x]===1)wnz=1;
         else if(z<19&&map[z+1][x]===1)wnz=-1;
-        if((wnx||wnz)&&Math.random()<0.06){
+        if((wnx||wnz)&&Math.random()<0.07){
           var r=Math.random();
-          if(r<0.34)buildMirror(cx,cz,wnx,wnz);
-          else if(r<0.67)buildShelf(cx,cz,wnx,wnz);
-          else buildPoster(cx,cz,wnx,wnz);
+          if(r<0.27)buildMirror(cx,cz,wnx,wnz);
+          else if(r<0.54)buildShelf(cx,cz,wnx,wnz);
+          else if(r<0.78)buildPoster(cx,cz,wnx,wnz);
+          else buildBrokenCase(cx,cz,wnx,wnz);
         }
         // мелкий реквизит на полу — не привязан к стене, просто
         // разбросан по свободным клеткам, для ощущения захламлённого
@@ -852,6 +853,48 @@ function buildShelf(cx,cz,nx,nz){
   for(var pi=0;pi<2;pi++){
     var pot=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.12,8),potM);
     pot.position.set(-0.18+pi*0.36,0.085,0);pot.castShadow=true;g.add(pot);
+  }
+  addObj(g);
+}
+// Треугольный осколок стекла — три случайные вершины внутри прямоугольника
+// заданного размера, без текстур: просто прозрачный треугольник под углом,
+// который ловит свет от фонаря.
+function makeShard(w,h,mat){
+  var p1=[(Math.random()-0.5)*w,(Math.random()-0.5)*h];
+  var p2=[(Math.random()-0.5)*w,(Math.random()-0.5)*h];
+  var p3=[(Math.random()-0.5)*w,(Math.random()-0.5)*h];
+  var geo=new THREE.BufferGeometry();
+  var verts=new Float32Array([p1[0],p1[1],0, p2[0],p2[1],0, p3[0],p3[1],0]);
+  geo.setAttribute('position',new THREE.BufferAttribute(verts,3));
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo,mat);
+}
+function buildBrokenCase(cx,cz,nx,nz){
+  // разбитая стеклянная витрина — рама цела, стекло частично выбито:
+  // несколько треугольных осколков вместо сплошной панели, плюс
+  // мелкие осколки на полу перед ней
+  var frameM=new THREE.MeshStandardMaterial({color:0x24201c,roughness:0.7,metalness:0.4});
+  var glassM=new THREE.MeshPhysicalMaterial({color:0xb8d0d8,roughness:0.08,metalness:0.1,
+    transparent:true,opacity:0.35,side:THREE.DoubleSide});
+  var g=new THREE.Group();
+  g.position.set(cx-nx*0.44,0,cz-nz*0.44);
+  g.rotation.y=Math.atan2(nx,nz);
+  var frame=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.1,0.06),frameM);
+  frame.position.y=0.62;frame.castShadow=true;frame.receiveShadow=true;g.add(frame);
+  var shardCount=2+Math.floor(Math.random()*3);   // часть стекла уже выбита
+  for(var i=0;i<shardCount;i++){
+    var sh=makeShard(0.6,0.9,glassM);
+    sh.position.set(0,0.62,0.031);
+    g.add(sh);
+  }
+  // осколки на полу — та же треугольная геометрия, но плашмя и мелко
+  var floorShards=3+Math.floor(Math.random()*4);
+  for(var j=0;j<floorShards;j++){
+    var fs=makeShard(0.09,0.09,glassM);
+    fs.rotation.x=-Math.PI/2;
+    fs.rotation.z=Math.random()*Math.PI*2;
+    fs.position.set(nx*0.15+(Math.random()-0.5)*0.5,0.005,nz*0.15+(Math.random()-0.5)*0.5);
+    g.add(fs);
   }
   addObj(g);
 }
