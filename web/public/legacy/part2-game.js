@@ -8776,7 +8776,10 @@ function update(ts){
     P.y+=P.vy*dt*60;
     // Пол может быть ниже нуля — в доме игрушек мы спускаемся в ямы
     var fy=(P.floorY===undefined)?0:P.floorY;
-    if(P.y<=fy){P.y=fy;P.vy=0;P.onGround=true;}
+    if(P.y<=fy){
+      if(P.vy<-0.03)P.landKick=Math.min(0.09,Math.abs(P.vy)*1.1);
+      P.y=fy;P.vy=0;P.onGround=true;
+    }
   }
   mJump=false;
 
@@ -8792,7 +8795,15 @@ function update(ts){
 function applyCamera(moved,run){
   var bob=0;
   if(moved)bob=Math.sin(performance.now()*(run?0.014:0.009))*(run?0.022:0.013);
-  camera.position.set(P.x,(P.eye||EYE_H)+P.y+bob,P.z);
+  // FOV на беге — расширяется на бегу, плавно возвращается на ходьбе/
+  // стоянии; ощущение скорости чувствуется сразу, каждый раз при беге.
+  if(P.fov===undefined)P.fov=74;
+  var targetFov=(run&&moved)?81:74;
+  P.fov+=(targetFov-P.fov)*0.08;
+  if(Math.abs(camera.fov-P.fov)>0.05){camera.fov=P.fov;camera.updateProjectionMatrix();}
+  P.landKick=(P.landKick||0)*0.82;
+  if(P.landKick<0.001)P.landKick=0;
+  camera.position.set(P.x,(P.eye||EYE_H)+P.y+bob-P.landKick,P.z);
   camera.rotation.order='YXZ';
   camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
   // ВАЖНО: после спуска по трубе камера оставалась накрененной по Z,

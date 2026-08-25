@@ -2608,6 +2608,10 @@ function update(ts){
       P.currentH = (P.currentH||EYE_H) + P.vy;
       if(P.currentH <= targetEyeH){
         P.currentH = targetEyeH;
+        // Отдача приземления — камера чуть проседает и плавно
+        // восстанавливается, пропорционально скорости падения.
+        // Чувствуется сразу на каждом прыжке, без поиска.
+        P.landKick=Math.min(0.09,Math.abs(P.vy)*1.4);
         P.vy=0; P.onGround=true; P.jump=false;
       }
       if(P.currentH > EYE_H+0.55) P.currentH = EYE_H+0.55;
@@ -2668,8 +2672,20 @@ function update(ts){
   var targetRoll=Math.max(-0.10,Math.min(0.10,-yawDelta*2.4));
   P.roll+=(targetRoll-P.roll)*0.15;
 
+  // FOV на беге — расширяется, когда бежишь (ощущение скорости,
+  // как в любом шутере/GTA), плавно возвращается на ходьбе/стоянии.
+  // Ощущается сразу, с первой секунды бега — не нужно ничего искать
+  // или проходить, чтобы заметить.
+  if(P.fov===undefined)P.fov=75;
+  var targetFov=run&&moved?82:75;
+  P.fov+=(targetFov-P.fov)*0.08;
+  if(Math.abs(camera.fov-P.fov)>0.05){camera.fov=P.fov;camera.updateProjectionMatrix();}
+
+  P.landKick=(P.landKick||0)*0.82;
+  if(P.landKick<0.001)P.landKick=0;
+
   // Camera
-  camera.position.set(P.x+bobX,camY+bobY,P.z);
+  camera.position.set(P.x+bobX,camY+bobY-P.landKick,P.z);
   camera.rotation.order='YXZ';
   camera.rotation.y=P.yaw;
   camera.rotation.x=P.pitch;
