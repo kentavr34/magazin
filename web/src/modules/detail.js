@@ -128,6 +128,58 @@
     }
   }
 
+  /* Карта шероховатости из той же процедурной текстуры: средняя яркость
+     берётся за нейтральную точку, тёмные места (грязь/потёртости — уже
+     рисуются провалами яркости, см. VISUALSTYLE.md) становятся более
+     шероховатыми, светлые — чуть более гладкими. Та же идея, что и
+     normalFromCanvas() выше, только через luminance, а не Sobel. */
+  function roughnessFromCanvas(canvas, variance) {
+    try {
+      var w = canvas.width, h = canvas.height;
+      var src = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+      var out = document.createElement('canvas');
+      out.width = w; out.height = h;
+      var oc = out.getContext('2d');
+      var img = oc.createImageData(w, h);
+      var o = img.data;
+      var v = variance === undefined ? 0.35 : variance;
+      var sum = 0, n = w * h;
+      for (var i = 0; i < n; i++) {
+        var i4 = i * 4;
+        sum += src[i4] * 0.299 + src[i4 + 1] * 0.587 + src[i4 + 2] * 0.114;
+      }
+      var mean = sum / n / 255;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          var i2 = (y * w + x) * 4;
+          var lum = (src[i2] * 0.299 + src[i2 + 1] * 0.587 + src[i2 + 2] * 0.114) / 255;
+          var r = 0.5 + (mean - lum) * v;
+          r = Math.max(0, Math.min(1, r));
+          var g8 = Math.round(r * 255);
+          o[i2] = g8; o[i2 + 1] = g8; o[i2 + 2] = g8; o[i2 + 3] = 255;
+        }
+      }
+      oc.putImageData(img, 0, 0);
+      return out;
+    } catch (e) { return null; }
+  }
+  var roughCache = {};
+  function roughnessTexFor(tex, variance) {
+    if (!tex || !tex.image || !tex.image.getContext) return null;
+    var key = (tex.uuid || '') + '|r|' + variance;
+    if (roughCache[key]) return roughCache[key];
+    var c = roughnessFromCanvas(tex.image, variance);
+    if (!c) return null;
+    var rt = new THREE.CanvasTexture(c);
+    rt.wrapS = rt.wrapT = THREE.RepeatWrapping;
+    rt.repeat.copy(tex.repeat);
+    rt.anisotropy = D.aniso();
+    rt.encoding = THREE.LinearEncoding;
+    roughCache[key] = rt;
+    remember(rt);
+    return rt;
+  }
+
   var normalCache = {};
   function normalTexFor(tex, strength) {
     if (!tex || !tex.image || !tex.image.getContext) return null;
@@ -165,6 +217,8 @@
             m.normalScale = new THREE.Vector2(0.85, 0.85);
             m.bumpMap = null;
           }
+          var rt = roughnessTexFor(src, 0.3);
+          if (rt) m.roughnessMap = rt;
         }
         m.envMapIntensity = 0.55;
         m.needsUpdate = true;
@@ -181,6 +235,8 @@
       if (src && src.image && src.image.getContext) {
         var nt = normalTexFor(src, strength || 1.8);
         if (nt) { mat.normalMap = nt; mat.bumpMap = null; }
+        var rt = roughnessTexFor(src, 0.3);
+        if (rt) mat.roughnessMap = rt;
       }
       mat.needsUpdate = true;
     } catch (e) { }
