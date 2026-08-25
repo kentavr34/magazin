@@ -4365,13 +4365,29 @@ function makeFriend(hue){
   return g;
 }
 var FRIEND_DEFS=[
-  {key:'p1_mission1',name:'Игорь',color:0x5a7a3a},
-  {key:'p1_mission2',name:'Марина',color:0x8a4a6a}
+  {key:'p1_mission1',name:'Игорь',color:0x5a7a3a,greet:'Спасибо, что нашёл меня там...'},
+  {key:'p1_mission2',name:'Марина',color:0x8a4a6a,greet:'Даже не думала, что выберусь оттуда.'}
 ];
+function sndCelebrate(){
+  // короткий приветственный перезвон — Этап 26, отмечаем завершение
+  // миссии спасения (полноценная сцена "тусовки" ещё впереди)
+  var a=getAC();if(!a)return;
+  var t0=a.currentTime;
+  [523,659,784,1046].forEach(function(f,i){
+    var o=a.createOscillator(),g=a.createGain();
+    o.type='sine';o.frequency.value=f;
+    var t=t0+i*0.09;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.22,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.35);
+    o.connect(g);g.connect(a.destination);
+    o.start(t);o.stop(t+0.36);
+  });
+}
 function spawnFriends(){
   if(!window.Progress)return;
   var spots=[[1.2,6.6],[6.7,4.6],[7.0,1.3],[1.0,1.3]];
-  var names=[],i=0;
+  var names=[],newFriends=[],i=0;
   FRIEND_DEFS.forEach(function(f){
     if(!Progress.isCompleteSync(f.key))return;
     var p=spots[i%spots.length];i++;
@@ -4381,8 +4397,24 @@ function spawnFriends(){
     g.userData.friendName=f.name;
     addObj(g);
     names.push(f.name);
+    var celKey='celebrated_'+f.key;
+    if(!Progress.isCompleteSync(celKey)){
+      newFriends.push(f);
+      Progress.markComplete(celKey);
+    }
   });
-  if(names.length)setTimeout(function(){showMsg('На базе теперь '+names.join(' и ')+'.',3.2);},9800);
+  if(newFriends.length){
+    setTimeout(function(){
+      sndCelebrate();
+      showMsg('🎉 '+newFriends.map(function(f){return f.name;}).join(' и ')+' теперь с тобой на базе!',3.6);
+      if(window.Coins)Coins.earn(15*newFriends.length,'встреча на базе');
+      newFriends.forEach(function(f,idx){
+        setTimeout(function(){showSub(f.name,f.greet,3.0);},1600+idx*2600);
+      });
+    },9800);
+  }else if(names.length){
+    setTimeout(function(){showMsg('На базе '+names.join(' и ')+'.',3.0);},9800);
+  }
 }
 
 function startCandleRoom(){
