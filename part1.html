@@ -1050,7 +1050,8 @@ function makeSurvivor(){
   var pl=new THREE.PointLight(0xfff2c0,0.35,3);pl.position.set(0,0.9,0);g.add(pl);
   return g;
 }
-var MISSION={1:{tx:0,tz:0,mesh:null,found:false},2:{tx:0,tz:0,mesh:null,found:false}};
+var MISSION={1:{tx:0,tz:0,mesh:null,found:false},
+             2:{tx:0,tz:0,mesh:null,found:false,stage:0,bx:0,bz:0,bagMesh:null}};
 function pickMissionSpot(map,sx,sz){
   var cand=[];
   for(var z=1;z<19;z++)for(var x=1;x<19;x++){
@@ -1061,13 +1062,27 @@ function pickMissionSpot(map,sx,sz){
   if(!cand.length)return null;
   return cand[Math.floor(Math.random()*cand.length)];
 }
+function makeBag(){
+  // сумка — отдельная процедурная форма (коробка + ручка-полукольцо),
+  // чтобы не путать её силуэт с ключами/генераторами
+  var g=new THREE.Group();
+  var bagM=new THREE.MeshStandardMaterial({color:0x5a3a28,roughness:0.9});
+  var body=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.20,0.14),bagM);
+  body.position.y=0.12;g.add(body);
+  var handleM=new THREE.MeshStandardMaterial({color:0x2a1a10,roughness:0.85});
+  var handle=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.014,6,10,Math.PI),handleM);
+  handle.position.set(0,0.24,0);handle.rotation.z=Math.PI;g.add(handle);
+  var pl=new THREE.PointLight(0xfff2c0,0.2,1.6);pl.position.set(0,0.3,0);g.add(pl);
+  return g;
+}
 function spawnMission(floorNum){
   var M=MISSION[floorNum];
   if(!M)return;
-  M.mesh=null;
+  M.mesh=null;M.bagMesh=null;
   var key='p1_mission'+floorNum;
-  if(window.Progress&&Progress.isCompleteSync(key)){M.found=true;return;}
+  if(window.Progress&&Progress.isCompleteSync(key)){M.found=true;if(M.stage!==undefined)M.stage=2;return;}
   M.found=false;
+  if(M.stage!==undefined)M.stage=0;
   var cfg=floorCfg(floorNum);
   var spot=pickMissionSpot(MAPS[floorNum],cfg.x,cfg.z);
   if(!spot)return;
@@ -1080,11 +1095,44 @@ function spawnMission(floorNum){
   if(floorNum===1)showMsg('Кажется, кто-то есть на этаже. Стоит поискать.',3.4);
   else showMsg('Ещё один прячется здесь. Мебельщик рядом — тише.',3.6);
 }
-var nMission=null;
+function spawnBag(){
+  // второй, ОТДЕЛЬНЫЙ характер механики на этаже 2 (по просьбе Кенана —
+  // разные динамики на разных этажах): не просто дойти и нажать E,
+  // а донести без риска попасться, пока мебельщик может быть рядом
+  var M=MISSION[2];
+  var cfg=floorCfg(2);
+  var spot=pickMissionSpot(MAPS[2],cfg.x,cfg.z);
+  if(!spot){finishMission2();return;}
+  M.bx=spot[0];M.bz=spot[1];
+  var g=makeBag();
+  g.position.set(M.bx,0,M.bz);
+  addObj(g);
+  M.bagMesh=g;
+}
+function finishMission2(){
+  var M=MISSION[2];
+  M.stage=2;
+  if(M.bagMesh){scene.remove(M.bagMesh);M.bagMesh=null;}
+  if(window.Progress)Progress.markComplete('p1_mission2');
+  if(window.Coins)Coins.earn(15,'вынес сумку — этаж 2');
+  var line='Спасибо... это всё, что у меня осталось.';
+  showMsg(line,3.0);if(typeof say==='function')say(line,0.85,0.55);
+}
+var nMission=null,nBag=false;
 function checkMissionNear(){
-  nMission=null;
+  nMission=null;nBag=false;
   var M=MISSION[P.floor];
-  if(!M||!M.mesh||M.found)return false;
+  if(!M)return false;
+  if(P.floor===2&&M.stage===1&&M.bagMesh){
+    var dx2=P.x-M.bx,dz2=P.z-M.bz;
+    if(dx2*dx2+dz2*dz2<2.0){
+      nBag=true;
+      setPrompt('🎒 ЗАБРАТЬ СУМКУ — E',true);
+      return true;
+    }
+    return false;
+  }
+  if(!M.mesh||M.found)return false;
   var dx=P.x-M.tx,dz=P.z-M.tz;
   if(dx*dx+dz*dz<2.4){
     nMission=M;
@@ -1094,14 +1142,28 @@ function checkMissionNear(){
   return false;
 }
 function missionAct(){
+  if(nBag){
+    var chasing=entities.some(function(e){return e.chase;});
+    if(chasing){showMsg('Не сейчас — он услышит!',2.2);return;}
+    finishMission2();
+    nBag=false;setPrompt('',false);
+    return;
+  }
   var M=nMission;if(!M)return;
   M.found=true;
   if(M.mesh){scene.remove(M.mesh);M.mesh=null;}
-  var key='p1_mission'+P.floor;
-  if(window.Progress)Progress.markComplete(key);
-  if(window.Coins)Coins.earn(25,'спас человека — этаж '+P.floor);
-  var line=P.floor===1?'Живой. Идём, тут нельзя оставаться.':'Тихо... идём, пока не заметил.';
-  showMsg(line,3.0);if(typeof say==='function')say(line,0.85,0.55);
+  if(P.floor===1){
+    if(window.Progress)Progress.markComplete('p1_mission1');
+    if(window.Coins)Coins.earn(25,'спас человека — этаж 1');
+    var line1='Живой. Идём, тут нельзя оставаться.';
+    showMsg(line1,3.0);if(typeof say==='function')say(line1,0.85,0.55);
+  }else{
+    M.stage=1;
+    if(window.Coins)Coins.earn(10,'нашёл человека — этаж 2');
+    showMsg('Тихо... Пожалуйста, забери мою сумку — я обронила её где-то здесь.',3.8);
+    if(typeof say==='function')say('Пожалуйста, забери мою сумку.',0.85,0.55);
+    spawnBag();
+  }
   nMission=null;setPrompt('',false);
 }
 
@@ -2359,7 +2421,7 @@ var nDoor=false,nStairs=false,nBed=false,nFakeExit=false,nExit=false,nSleep=fals
 var nSleepCell=null;
 function doAct(){
   if(dead||HG.active||WP.active||DL.active)return;
-  if(nMission)missionAct();
+  if(nMission||nBag)missionAct();
   else if(nPick)takePick();
   else if(nGen)genAct(nGen);
   else if(nExit)exitTry();
