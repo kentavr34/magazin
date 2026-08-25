@@ -4482,6 +4482,54 @@ function spawnFriends(){
   }
 }
 
+// ============================================================
+//  КОМПАНЬОН — общий переиспользуемый паттерн (KEN-15):
+//  ВЕДЁТ / ЖДЁТ / ПРЕДУПРЕЖДАЕТ / ЗАВЕРШЕНО. Для ЭТОЙ игры, тема
+//  под охранника/друзей с базы — не аквапарк (см. заметку о путанице
+//  выше в этом файле). Демо-привязка — можно позвать любого друга с
+//  базы следовать за собой по комнате базы; полноценное сопровождение
+//  в сюжетных сценах — следующий подэтап, когда появится, куда вести.
+// ============================================================
+var COMPANION={active:false,mesh:null,name:'',state:'WAIT',lostT:0};
+function companionSetLead(mesh,name){
+  COMPANION.active=true;COMPANION.mesh=mesh;COMPANION.name=name;
+  COMPANION.state='LEAD';COMPANION.lostT=0;
+}
+function companionStop(){
+  COMPANION.active=false;COMPANION.mesh=null;COMPANION.state='WAIT';
+}
+function companionWarn(text){
+  // ПРЕДУПРЕЖДАЕТ: компаньон стоит на месте и говорит реплику — для
+  // сцен, где спутник должен предупредить об опасности впереди.
+  // Общая функция, вызывать из будущих миссий с компаньоном.
+  if(!COMPANION.active)return;
+  COMPANION.state='WARN';
+  showSub(COMPANION.name,text,3.0);
+  setTimeout(function(){if(COMPANION.state==='WARN')COMPANION.state='LEAD';},3000);
+}
+function updateCompanion(dt){
+  if(!COMPANION.active||!COMPANION.mesh||COMPANION.state==='WARN')return;
+  var m=COMPANION.mesh;
+  var dx=P.x-m.position.x,dz=P.z-m.position.z,d=Math.hypot(dx,dz);
+  if(d>1.6){
+    var sp=0.026;
+    m.position.x+=dx/d*sp;m.position.z+=dz/d*sp;
+    m.rotation.y=Math.atan2(dx,dz);
+  }
+  if(d>7&&COMPANION.lostT===0){COMPANION.lostT=1;showMsg(COMPANION.name+' отстал — подожди его.',2.4);}
+  else if(d<=7)COMPANION.lostT=0;
+}
+function nearestFriend(){
+  var best=null,bestD=1.8;
+  objs.forEach(function(o){
+    if(!o.userData||!o.userData.friendName||o===COMPANION.mesh)return;
+    var d=Math.hypot(P.x-o.position.x,P.z-o.position.z);
+    if(d<bestD){bestD=d;best=o;}
+  });
+  return best;
+}
+var nCompanionTarget=null;
+
 function startCandleRoom(){
   PHASE='candle';buildCandleRoom();
   saveAt('candle');
@@ -4508,10 +4556,16 @@ function updateCandleRoom(dt){
     c.userData.flame.scale.set(1,1.8*(0.9+f*0.15),1);
   });
   cnNear();
+  updateCompanion(dt);
 }
 var nCn=null;
 function cnNear(){
   nCn=null;
+  if(COMPANION.active){
+    nCn='release';setPrompt('👋 ОТПУСТИТЬ '+COMPANION.name.toUpperCase()+' — E',true);return;
+  }
+  var frC=nearestFriend();
+  if(frC){nCn='companion';nCompanionTarget=frC;setPrompt('👋 ПОЗВАТЬ С СОБОЙ — E',true);return;}
   if(Math.hypot(P.x-CN.exit.x,P.z-CN.exit.z)<1.6){
     nCn='exit';setPrompt('🚪 ВЫЙТИ — E',true);return;
   }
@@ -4521,6 +4575,17 @@ function cnNear(){
   setPrompt('',false);
 }
 function cnAct(){
+  if(nCn==='release'){
+    var relName=COMPANION.name;companionStop();
+    showMsg(relName+' останется здесь.',2.2);return;
+  }
+  if(nCn==='companion'){
+    if(nCompanionTarget){
+      companionSetLead(nCompanionTarget,nCompanionTarget.userData.friendName);
+      showMsg(nCompanionTarget.userData.friendName+' идёт с тобой.',2.2);
+    }
+    return;
+  }
   if(nCn!=='exit')return;
   CN.on=false;questDone();
   document.getElementById('black').style.transition='opacity 0.9s';
@@ -7206,10 +7271,16 @@ function updateCandleReturn(dt){
     },3600);
   }
   cn2Near();
+  updateCompanion(dt);
 }
 var nCn2=null;
 function cn2Near(){
   nCn2=null;
+  if(COMPANION.active){
+    nCn2='release';setPrompt('👋 ОТПУСТИТЬ '+COMPANION.name.toUpperCase()+' — E',true);return;
+  }
+  var frC2=nearestFriend();
+  if(frC2){nCn2='companion';nCompanionTarget=frC2;setPrompt('👋 ПОЗВАТЬ С СОБОЙ — E',true);return;}
   if(!CN.hatch)return;
   var d=Math.hypot(P.x-CN.hatch.position.x,P.z-CN.hatch.position.z);
   if(d<1.6){
@@ -7219,6 +7290,17 @@ function cn2Near(){
   setPrompt('',false);
 }
 function cn2Act(){
+  if(nCn2==='release'){
+    var relName2=COMPANION.name;companionStop();
+    showMsg(relName2+' останется здесь.',2.2);return;
+  }
+  if(nCn2==='companion'){
+    if(nCompanionTarget){
+      companionSetLead(nCompanionTarget,nCompanionTarget.userData.friendName);
+      showMsg(nCompanionTarget.userData.friendName+' идёт с тобой.',2.2);
+    }
+    return;
+  }
   if(nCn2!=='hatch'||CN2.opened)return;
   CN2.opened=true;CN2.on=false;questDone();
   sndCreak();
