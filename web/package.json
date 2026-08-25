@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "sync-legacy": "node scripts/sync-legacy.mjs",
+    "prebuild": "node scripts/sync-legacy.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -465,6 +465,9 @@ function unlockSpeech(){
   speechOK=true;
   try{var u=new SpeechSynthesisUtterance('');u.volume=0;speechSynthesis.speak(u);}catch(e){}
 }
+// Та же блокировка на телефоне действует и на <audio> (готовые mp3-реплики
+// из Fish Audio, см. sayE()/VOICE_LINES) — отдельный "прогрев" одним тихим
+// проигрыванием на первое касание, иначе первый вызов sayE() молчит.
 var voiceAudioOK=false;
 function unlockVoiceAudio(){
   if(voiceAudioOK)return;
