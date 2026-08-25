@@ -71,9 +71,13 @@ fi
 # ---------- сборка web/ в одноразовом контейнере ----------
 [ -d web ] || die "в репозитории нет папки web/ — нечего собирать"
 log "собираю web/ в контейнере $BUILD_IMAGE (npm ci && npm run build)"
+# Монтируем ВЕСЬ .staging (не только web/) — начиная с KEN-9,
+# web/scripts/sync-legacy.mjs (npm prebuild) читает part1.html/
+# part2.html из корня репозитория относительным путём, а не только
+# из web/; без этого он их не видит внутри контейнера.
 docker run --rm \
-  -v "$ROOT/.staging/web:/app" \
-  -w /app \
+  -v "$ROOT/.staging:/repo" \
+  -w /repo/web \
   "$BUILD_IMAGE" \
   sh -c "npm ci --no-audit --no-fund --silent && npm run build" \
   || die "сборка Vite упала — смотри вывод выше"
