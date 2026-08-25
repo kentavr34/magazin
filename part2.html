@@ -2741,8 +2741,11 @@ function updateHall(dt){
     else gap=Math.max(0.1,(HL.cz-HL.sideZ)+Math.abs(P.x));
     var dmg=document.getElementById('dmg');
     if(dmg)dmg.style.opacity=gap<6?Math.min(0.8,(6-gap)/5).toFixed(2):'0';
+    // HL.danger раньше объявлялся, но никогда не обновлялся — фонарь
+    // не мог на него реагировать. Тот же gap, что красит виньетку.
+    HL.danger=gap<6?Math.min(1,(6-gap)/5):0;
     if(gap<1.0)hallCaught();
-  }
+  }else HL.danger=0;
   hallNear();
 }
 function hallCaught(){
@@ -3303,6 +3306,11 @@ function updateTorch(dt){
   }
   // на последних процентах начинает моргать
   var weak=FL2.charge<0.18?(0.35+0.65*Math.abs(Math.sin(performance.now()*0.011))):1;
+  // рядом опасность (сейчас есть числовой сигнал только в зале с
+  // великанами, HL.danger 0..1) — свет начинает нервно дёргаться,
+  // как будто реагирует на близость угрозы, а не только на заряд
+  var nearDanger=(typeof HL!=='undefined'&&HL.danger>0.35)?HL.danger:0;
+  if(nearDanger>0)weak*=(1-nearDanger*0.5*(0.5+0.5*Math.abs(Math.sin(performance.now()*0.045))));
   var lvl=FL2.on?(0.35+0.65*Math.min(1,FL2.charge*2.2))*weak:0;
   FL2.light.intensity=4.2*lvl;
   if(FL2.view){
