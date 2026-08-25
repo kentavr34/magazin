@@ -5,6 +5,7 @@
 //  THREE.JS SETUP
 // ============================================================
 var scene,camera,renderer,flashlight,ambientLight;
+var bloomCv,bloomCtx;
 var W=window.innerWidth,H=window.innerHeight;
 
 function makeEnvMap(){
@@ -71,10 +72,27 @@ function initThree(){
   FLV.g=makeFlashlight();camera.add(FLV.g);
   FLV.shown=P.fl;FLV.y=P.fl?FL_UP:FL_DOWN;   // игра начинается с включённым фонарём
 
+  // Bloom без EffectComposer (в r128 он доступен только как ES-модуль,
+  // а весь остальной код тут — классические <script>, без бандлера).
+  // Вместо шейдерного прохода — дешёвый трюк: даунскейл готового кадра
+  // в маленький 2D-канвас поверх сцены с CSS blur + mix-blend-mode:screen.
+  // screen-блендинг тёмного почти не трогает (screen(x,0)=x), а яркие
+  // пятна (фонарь, лампы, линзы) расползаются мягким ореолом — именно
+  // то же соотношение, что даёт настоящий bloom, без прохода по GPU.
+  bloomCv=document.getElementById('bloomcv');
+  bloomCtx=bloomCv?bloomCv.getContext('2d',{alpha:false}):null;
+  function resizeBloom(){
+    if(!bloomCv)return;
+    bloomCv.width=Math.max(48,Math.round(W/6));
+    bloomCv.height=Math.max(27,Math.round(H/6));
+  }
+  resizeBloom();
+
   window.addEventListener('resize',function(){
     W=window.innerWidth;H=window.innerHeight;
     camera.aspect=W/H;camera.updateProjectionMatrix();
     renderer.setSize(W,H);
+    resizeBloom();
   });
   // Пыль здесь своя (initDust), поэтому у DETAIL берём только
   // тени, потолок разрешения, зерно и автокачество.
@@ -3166,6 +3184,9 @@ function loop(ts){
     }
   }
   renderer.render(scene,camera);
+  if(bloomCtx&&(!window.DETAIL||DETAIL.wantBloom())){
+    try{bloomCtx.drawImage(renderer.domElement,0,0,bloomCv.width,bloomCv.height);}catch(e){}
+  }
   requestAnimationFrame(loop);
 }
 

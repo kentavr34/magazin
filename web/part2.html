@@ -14,6 +14,8 @@
 body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-action:none;
   user-select:none;-webkit-user-select:none;}
 #renderer{position:fixed;top:0;left:0;width:100%;height:100%;}
+#bloomcv{position:fixed;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:none;
+  mix-blend-mode:screen;filter:blur(9px) brightness(1.55);opacity:0.55;}
 
 /* ---------- начальный экран ---------- */
 #start{position:fixed;inset:0;background:#050506;z-index:300;display:flex;flex-direction:column;
@@ -213,6 +215,7 @@ body{background:#000;overflow:hidden;font-family:'Courier New',monospace;touch-a
 </head>
 <body>
 <div id="renderer"></div>
+<canvas id="bloomcv"></canvas>
 <div id="vig"></div><div id="grain"></div><div id="dream"></div><div id="dmg"></div>
 <div id="crosshair"></div>
 <div id="msg"></div><div id="subs"></div><div id="prompt"></div>

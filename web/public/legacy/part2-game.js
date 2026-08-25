@@ -17,6 +17,7 @@ if(window.Profile){
 //  ЯДРО: сцена, текстуры, материалы
 // ============================================================
 var scene,camera,renderer,ambientLight,sunLight;
+var bloomCv,bloomCtx;
 var LIGHT_POOL=[],LAMPS=[];   // позиции светильников уровня
 var W=innerWidth,H=innerHeight;
 var started=false,dead=false,lastT=0;
@@ -185,6 +186,18 @@ function initThree(){
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.05;
   document.getElementById('renderer').appendChild(renderer.domElement);
+  // Bloom без EffectComposer — тот же приём, что и в part1.html: даунскейл
+  // готового кадра в маленький 2D-канвас, CSS blur + mix-blend-mode:screen
+  // поверх сцены. См. подробный комментарий в part1.html/initThree().
+  bloomCv=document.getElementById('bloomcv');
+  bloomCtx=bloomCv?bloomCv.getContext('2d',{alpha:false}):null;
+  function resizeBloom(){
+    if(!bloomCv)return;
+    bloomCv.width=Math.max(48,Math.round(W/6));
+    bloomCv.height=Math.max(27,Math.round(H/6));
+  }
+  resizeBloom();
+  window.__resizeBloom=resizeBloom;
   camera=new THREE.PerspectiveCamera(74,W/H,0.05,120);
   scene.add(camera);
   ambientLight=new THREE.AmbientLight(0xfff2e0,1.15);   // сон: света много, теней почти нет
@@ -225,6 +238,7 @@ function updateLights(){
 addEventListener('resize',function(){
   W=innerWidth;H=innerHeight;
   if(renderer){renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();}
+  if(window.__resizeBloom)window.__resizeBloom();
 });
 // ============================================================
 //  МАГАЗИН ИЗ СНА — здесь всё ещё работает
@@ -8885,6 +8899,9 @@ function loop(ts){
   if(window.DomeMusic)DomeMusic.pump();
   if(window.MenuMusic)MenuMusic.pump();
   renderer.render(scene,camera);
+  if(bloomCtx&&(!window.DETAIL||DETAIL.wantBloom())){
+    try{bloomCtx.drawImage(renderer.domElement,0,0,bloomCv.width,bloomCv.height);}catch(e){}
+  }
   requestAnimationFrame(loop);
 }
 

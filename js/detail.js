@@ -27,10 +27,10 @@
   /* ---------- уровни качества ----------
      0 — телефон послабее, 1 — обычный телефон, 2 — планшет/ПК, 3 — ПК с запасом */
   var LEVELS = [
-    { tex: 256, aniso: 1, aa: false, pr: 1.00, shadow: 0, dust: 0, shafts: false, grain: false },
-    { tex: 256, aniso: 4, aa: false, pr: 1.25, shadow: 0, dust: 260, shafts: true, grain: true },
-    { tex: 512, aniso: 8, aa: true, pr: 1.50, shadow: 1024, dust: 550, shafts: true, grain: true },
-    { tex: 512, aniso: 16, aa: true, pr: 2.00, shadow: 2048, dust: 900, shafts: true, grain: true }
+    { tex: 256, aniso: 1, aa: false, pr: 1.00, shadow: 0, dust: 0, shafts: false, grain: false, bloom: false },
+    { tex: 256, aniso: 4, aa: false, pr: 1.25, shadow: 0, dust: 260, shafts: true, grain: true, bloom: true },
+    { tex: 512, aniso: 8, aa: true, pr: 1.50, shadow: 1024, dust: 550, shafts: true, grain: true, bloom: true },
+    { tex: 512, aniso: 16, aa: true, pr: 2.00, shadow: 2048, dust: 900, shafts: true, grain: true, bloom: true }
   ];
 
   /* Номер правил подбора качества. Меняется, когда меняется сама логика
@@ -62,6 +62,7 @@
   D.level = function () { return lvl; };
   D.texSize = function () { return Q().tex; };
   D.wantAA = function () { return Q().aa; };
+  D.wantBloom = function () { return Q().bloom; };
   D.pixelRatio = function () { return Math.min(window.devicePixelRatio || 1, Q().pr); };
 
   /* максимальная анизотропия, которую реально держит видеокарта */
