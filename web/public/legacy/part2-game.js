@@ -4027,6 +4027,55 @@ function buildCandleRoom(){
   });
   scene.fog=new THREE.FogExp2(0x140c06,0.10);
   ambientLight.intensity=0.07;ambientLight.color.setHex(0xffd8a0);sunLight.intensity=0;
+  spawnFriends();
+}
+
+// ============================================================
+//  ДРУЗЬЯ НА БАЗЕ — Этап 25: спасённые на 1-2 этажах part1.html
+//  (Progress.p1_mission1/p1_mission2) появляются здесь. Человеческая
+//  фигура, НЕ мебельщик (makeAlly()/createBossMesh() для этого не
+//  годятся — они монструозного силуэта, тут нужен обратный эффект).
+// ============================================================
+function makeFriend(hue){
+  var g=new THREE.Group();
+  var skinM=new THREE.MeshStandardMaterial({color:0xc89a78,roughness:0.85});
+  var clothM=new THREE.MeshStandardMaterial({color:hue,roughness:0.9});
+  var torso=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.55,0.24),clothM);
+  torso.position.y=1.05;g.add(torso);
+  var head=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.26,0.24),skinM);
+  head.position.y=1.48;g.add(head);
+  [-0.12,0.12].forEach(function(dx){
+    var leg=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.72,0.14),clothM);
+    leg.position.set(dx,0.36,0);g.add(leg);
+    var arm=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.5,0.11),skinM);
+    arm.position.set(dx*2.0,1.05,0);g.add(arm);
+  });
+  var eyeM=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff8e0,emissiveIntensity:0.6});
+  [-0.05,0.05].forEach(function(dx){
+    var e=new THREE.Mesh(new THREE.SphereGeometry(0.02,6,6),eyeM);
+    e.position.set(dx,1.50,0.13);g.add(e);
+  });
+  return g;
+}
+var FRIEND_DEFS=[
+  {key:'p1_mission1',name:'Игорь',color:0x5a7a3a},
+  {key:'p1_mission2',name:'Марина',color:0x8a4a6a}
+];
+function spawnFriends(){
+  if(!window.Progress)return;
+  var spots=[[1.2,6.6],[6.7,4.6],[7.0,1.3],[1.0,1.3]];
+  var names=[],i=0;
+  FRIEND_DEFS.forEach(function(f){
+    if(!Progress.isCompleteSync(f.key))return;
+    var p=spots[i%spots.length];i++;
+    var g=makeFriend(f.color);
+    g.position.set(p[0],0,p[1]);
+    g.rotation.y=Math.random()*6.28;
+    g.userData.friendName=f.name;
+    addObj(g);
+    names.push(f.name);
+  });
+  if(names.length)setTimeout(function(){showMsg('На базе теперь '+names.join(' и ')+'.',3.2);},9800);
 }
 
 function startCandleRoom(){
