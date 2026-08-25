@@ -4496,6 +4496,7 @@ function spawnFriends(){
   if(newFriends.length){
     setTimeout(function(){
       sndCelebrate();
+      ReunionMusic.start();
       showMsg('🎉 '+newFriends.map(function(f){return f.name;}).join(' и ')+' теперь с тобой на базе!',3.6);
       if(window.Coins)Coins.earn(15*newFriends.length,'встреча на базе');
       newFriends.forEach(function(f,idx){
@@ -4613,6 +4614,7 @@ function cnAct(){
   }
   if(nCn!=='exit')return;
   CN.on=false;questDone();
+  ReunionMusic.stop();
   document.getElementById('black').style.transition='opacity 0.9s';
   document.getElementById('black').style.opacity='1';
   setTimeout(startFork,1000);
@@ -7328,6 +7330,7 @@ function cn2Act(){
   }
   if(nCn2!=='hatch'||CN2.opened)return;
   CN2.opened=true;CN2.on=false;questDone();
+  ReunionMusic.stop();
   sndCreak();
   if(CN.hatch){CN.hatch.rotation.z=-1.1;CN.hatch.position.y=0.35;}
   showSub('Вы','Открылся. Там темно.',2.8);sayE('Открылся. Там темно.');
@@ -8681,6 +8684,127 @@ var MenuMusic=(function(){
       gain.gain.exponentialRampToValueAtTime(0.0001,A.currentTime+1.4);
     }
     setTimeout(function(){try{if(s)s.stop();}catch(e){}},1600);src=null;
+  }
+  function pump(){if(playing&&A&&A.state==='suspended'){try{A.resume();}catch(e){}}}
+  return {prepare:prepare,start:start,stop:stop,pump:pump,isOn:function(){return playing;}};
+})();
+// ============================================================
+//  МУЗЫКА ВСТРЕЧИ НА БАЗЕ — Этап 26: та же формула, что у MenuMusic
+//  (pad+bell+bass), но мажорные трезвучия вместо минорных и темп
+//  чуть живее — тепло, а не тревожно. Играет с момента, когда на
+//  базе появляется НОВЫЙ друг (celebrated-момент, sndCelebrate()),
+//  останавливается при выходе с базы (cnAct()/cn2Act()). Полноценная
+//  сцена "тусовки" с несколькими танцующими NPC — отдельный будущий
+//  подэтап, здесь только сама дорожка.
+// ============================================================
+var ReunionMusic=(function(){
+  var A=null,src=null,gain=null,buf=null,playing=false,ready=false,err='';
+  var BPM=88, BEAT=60/BPM, BARS=8, BAR=4*BEAT, ROOT=130.81;   // до малой октавы — светлее MenuMusic
+  function soft(x){return x/(1+Math.abs(x));}
+  function saw(p){return 2*(p-Math.floor(p))-1;}
+  function hz(s){return ROOT*Math.pow(2,s/12);}
+  function vPad(d,sr,t,dur,semis,v){
+    var n=Math.floor((dur+1.6)*sr),i0=Math.floor(t*sr),ph=[],j,lp=0;
+    for(j=0;j<semis.length;j++)ph.push(Math.random());
+    for(var i=0;i<n;i++){
+      var k=i0+i;if(k>=d.length)break;
+      var x=i/sr;
+      var e=x<1.2?x/1.2:(x>dur?Math.max(0,1-(x-dur)/1.6):1);
+      var raw=0;
+      for(j=0;j<semis.length;j++){
+        var f=hz(semis[j]);ph[j]+=f/sr;
+        raw+=saw(ph[j])+saw(ph[j]*1.0016);
+      }
+      raw/=(semis.length*2);
+      lp+=(raw-lp)*0.045;
+      d[k]+=lp*e*v;
+    }
+  }
+  function vBell(d,sr,t,semi,v){
+    var n=Math.floor(2.6*sr),i0=Math.floor(t*sr),f=hz(semi+12);
+    var p1=0,p2=0,p3=0;
+    for(var i=0;i<n;i++){
+      var k=i0+i;if(k>=d.length)break;
+      var x=i/sr;
+      p1+=f/sr;p2+=f*2.01/sr;p3+=f*3.02/sr;
+      var e=Math.exp(-x*1.5);
+      d[k]+=(Math.sin(p1*6.283185)+Math.sin(p2*6.283185)*0.35+Math.sin(p3*6.283185)*0.16)*e*v;
+    }
+  }
+  function vBass(d,sr,t,dur,semi,v){
+    var f=hz(semi-24),n=Math.floor((dur+0.6)*sr),i0=Math.floor(t*sr),p=0;
+    for(var i=0;i<n;i++){
+      var k=i0+i;if(k>=d.length)break;
+      var x=i/sr;
+      var e=x<0.15?x/0.15:(x>dur?Math.max(0,1-(x-dur)/0.6):1);
+      p+=f/sr;
+      d[k]+=soft(Math.sin(p*6.283185)*1.3)*e*v;
+    }
+  }
+  function vAir(d,sr,v){
+    var prev=0,lp=0;
+    for(var i=0;i<d.length;i++){
+      var nz=Math.random()*2-1,hp=nz-prev;prev=nz;
+      lp+=(hp-lp)*0.02;
+      d[i]+=lp*v*(0.6+0.4*Math.sin(i/44100*0.35));
+    }
+  }
+  function render(sr){
+    var loopLen=Math.floor(BARS*BAR*sr),tail=Math.floor(BAR*sr);
+    var d=new Float32Array(loopLen+tail),i;
+    // мажорные трезвучия (0,4,7 — большая терция) вместо минорных у
+    // MenuMusic (0,3,7) — та же прогрессия по ступеням, светлее внутри
+    var chords=[[0,4,7],[0,4,7],[5,9,12],[5,9,12],[-2,2,5],[-2,2,5],[3,7,10],[0,4,7]];
+    var mel   =[12,15,19,15,17,19,15,12];    // восходящая тема, разрешается вниз к тонике
+    for(var b=0;b<BARS;b++){
+      var t=b*BAR;
+      vPad(d,sr,t,BAR*1.05,chords[b],0.14);
+      vBass(d,sr,t,BAR*0.9,chords[b][0],0.28);
+      vBell(d,sr,t+BEAT*0.5,mel[b],0.15);
+    }
+    vAir(d,sr,0.024);
+    for(i=0;i<tail;i++)d[i]+=d[loopLen+i];
+    var out=new Float32Array(loopLen);
+    for(i=0;i<loopLen;i++)out[i]=d[i];
+    var sum=0;for(i=0;i<loopLen;i++)sum+=out[i]*out[i];
+    var g=Math.sqrt(sum/loopLen);g=g>0?0.10/g:1;
+    for(i=0;i<loopLen;i++){
+      var x=out[i]*g,ax=x<0?-x:x;
+      if(ax>0.82)x=(x<0?-1:1)*(0.82+soft((ax-0.82)*4)*0.14);
+      out[i]=x;
+    }
+    return out;
+  }
+  function prepare(){
+    if(ready)return;
+    A=getAC();if(!A){err='нет аудио';return;}
+    try{var pcm=render(A.sampleRate);
+      buf=A.createBuffer(1,pcm.length,A.sampleRate);
+      buf.getChannelData(0).set(pcm);ready=true;err='';}
+    catch(e){err=(e&&e.message)||'ошибка синтеза';}
+  }
+  function start(){
+    A=getAC();if(!A||playing)return;
+    if(!ready)prepare();
+    if(!ready)return;
+    try{
+      gain=A.createGain();gain.gain.value=0.0001;gain.connect(A.destination);
+      src=A.createBufferSource();src.buffer=buf;src.loop=true;src.connect(gain);
+      var t=A.currentTime+0.05;src.start(t);
+      gain.gain.setValueAtTime(0.0001,t);
+      gain.gain.exponentialRampToValueAtTime(0.85,t+2.4);
+      playing=true;
+    }catch(e){err=(e&&e.message)||'ошибка запуска';}
+  }
+  function stop(){
+    if(!playing||!A)return;playing=false;
+    var s=src;
+    if(gain){
+      gain.gain.cancelScheduledValues(A.currentTime);
+      gain.gain.setValueAtTime(Math.max(0.0001,gain.gain.value),A.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001,A.currentTime+1.6);
+    }
+    setTimeout(function(){try{if(s)s.stop();}catch(e){}},1800);src=null;
   }
   function pump(){if(playing&&A&&A.state==='suspended'){try{A.resume();}catch(e){}}}
   return {prepare:prepare,start:start,stop:stop,pump:pump,isOn:function(){return playing;}};
