@@ -1480,7 +1480,7 @@ function updateEntities(dt){
       var nx=e.x+dx/nd*e.spd,nz=e.z+dz/nd*e.spd;
       if(isWalkable(nx,e.z))e.x=nx;
       if(isWalkable(e.x,nz))e.z=nz;
-      if(d<0.7*(window.ADMIN?ADMIN.mobScale():1)&&!(window.ADMIN&&ADMIN.god)){P.hp=Math.max(0,P.hp-1.5);updateHP();if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
+      if(d<0.7*(window.ADMIN?ADMIN.mobScale():1)&&!(window.ADMIN&&ADMIN.god)){P.hp=Math.max(0,P.hp-1.5);updateHP();addShake(0.10);if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
       if(d<5)anyChase=true;
       e.sayT--;if(e.sayT<=0&&Math.random()<0.009){e.sayT=260+Math.floor(Math.random()*180);sayE(e.phrases[Math.floor(Math.random()*e.phrases.length)]);}
     } else {e.x+=Math.cos(Date.now()*0.0003+i)*0.005;e.z+=Math.sin(Date.now()*0.0002+i)*0.005;}
@@ -2415,12 +2415,20 @@ function updateFlashlight(dt,ts){
   if(!P.fl&&FLV.offT>0){FLV.offT-=dt;if(FLV.offT<=0)FLV.shown=false;}
   var target=FLV.shown?FL_UP:FL_DOWN;
   FLV.y+=(target-FLV.y)*Math.min(1,dt*7);
-  // покачивание при ходьбе
+  // покачивание при ходьбе + дыхание в покое, чтобы рука не выглядела
+  // намертво прибитой, даже когда игрок просто стоит на месте
   var moving=Math.abs(jmx)+Math.abs(jmy)>0.08||K['KeyW']||K['KeyS']||K['KeyA']||K['KeyD'];
-  FLV.bob+= moving?dt*(mRun?11:6.5):0;
-  var bx=moving?Math.sin(FLV.bob)*0.012:0, by=moving?Math.abs(Math.cos(FLV.bob))*0.010:0;
-  FLV.g.position.set(0.30+bx,FLV.y+by,-0.52);
-  FLV.g.rotation.z=0.05+bx*0.6;
+  FLV.bob+= moving?dt*(mRun?11.5:7):0;
+  FLV.idleT=(FLV.idleT||0)+dt;
+  var bx,by;
+  if(moving){bx=Math.sin(FLV.bob)*0.016;by=Math.abs(Math.cos(FLV.bob))*0.013;}
+  else{bx=Math.sin(FLV.idleT*0.7)*0.0035;by=Math.sin(FLV.idleT*1.1)*0.0025;}
+  // Инерция от поворота взгляда — рука чуть отстаёт и «догоняет» камеру
+  if(FLV.prevYaw===undefined)FLV.prevYaw=P.yaw;
+  var flYawD=P.yaw-FLV.prevYaw;FLV.prevYaw=P.yaw;
+  FLV.swayX=Math.max(-0.05,Math.min(0.05,(FLV.swayX||0)*0.82-flYawD*0.9));
+  FLV.g.position.set(0.30+bx+FLV.swayX,FLV.y+by,-0.52);
+  FLV.g.rotation.z=0.05+bx*0.6+FLV.swayX*0.5;
 
   var on=P.fl?FLV.fk:0;
   flashlight.intensity=2.5*on;
@@ -2438,13 +2446,14 @@ var msgT=0;
 function showMsg(txt,dur){var el=document.getElementById('msg');el.textContent=txt;el.style.opacity='1';clearTimeout(msgT);msgT=setTimeout(function(){el.style.opacity='0';},dur||3000);}
 function showWarn(txt){var el=document.getElementById('warn');el.textContent=txt;el.style.opacity='1';setTimeout(function(){el.style.opacity='0';},900);}
 function flash(alpha,ms){var el=document.getElementById('redflash');el.style.opacity=alpha;setTimeout(function(){el.style.opacity='0';},ms||500);}
+function addShake(amt){P.shake=Math.min(0.4,(P.shake||0)+amt);}
 function updateHP(){document.getElementById('hpfill').style.width=P.hp+'%';}
 function setPrompt(txt,show){document.getElementById('prompt').textContent=txt;document.getElementById('prompt').style.opacity=show?'1':'0';document.getElementById('bact').style.opacity=show?'1':'0';}
 
 // ============================================================
 //  TRAP
 // ============================================================
-function trapHit(){if(P.trapped)return;if(window.ADMIN&&ADMIN.god)return;P.trapped=true;P.trapT=220;P.trapCD=240;P.hp=Math.max(0,P.hp-20);updateHP();flash(0.55,650);showWarn('⚠ КАПКАН!');sndTrap();showMsg('Капкан. Двигайся чтобы выбраться.',3200);say('Капкан. Больно.',0.8,0.52);if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
+function trapHit(){if(P.trapped)return;if(window.ADMIN&&ADMIN.god)return;P.trapped=true;P.trapT=220;P.trapCD=240;P.hp=Math.max(0,P.hp-20);updateHP();flash(0.55,650);addShake(0.28);showWarn('⚠ КАПКАН!');sndTrap();showMsg('Капкан. Двигайся чтобы выбраться.',3200);say('Капкан. Больно.',0.8,0.52);if(P.hp<=0)die('ВЫ ПОГИБЛИ','');}
 
 // ============================================================
 //  ACTIONS
@@ -2929,12 +2938,23 @@ function update(ts){
   P.landKick=(P.landKick||0)*0.82;
   if(P.landKick<0.001)P.landKick=0;
 
+  // Тряска камеры при уроне (капкан/поимка) — сейчас была только
+  // красная вспышка на экране, без позиционного удара. addShake()
+  // вызывается из мест урона, здесь только гаснет и применяется.
+  P.shake=(P.shake||0)*0.88;if(P.shake<0.002)P.shake=0;
+  var shX=0,shY=0,shR=0;
+  if(P.shake>0){
+    shX=(Math.random()-0.5)*P.shake*0.35;
+    shY=(Math.random()-0.5)*P.shake*0.35;
+    shR=(Math.random()-0.5)*P.shake*0.06;
+  }
+
   // Camera
-  camera.position.set(P.x+bobX,camY+bobY-P.landKick,P.z);
+  camera.position.set(P.x+bobX+shX,camY+bobY-P.landKick+shY,P.z);
   camera.rotation.order='YXZ';
   camera.rotation.y=P.yaw;
   camera.rotation.x=P.pitch;
-  camera.rotation.z=P.roll;
+  camera.rotation.z=P.roll+shR;
 
   checkNear();
 }

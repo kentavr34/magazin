@@ -929,6 +929,7 @@ function updateCorridor(dt){
     CH.on=false;
     dead=true;
     document.getElementById('dmg').style.opacity='1';
+    addShake(0.30);
     if(window.sndScare)sndScare();
     Music.outro();
     setTimeout(function(){
@@ -2051,6 +2052,7 @@ function whCaught(){
   WH.caught=true;dead=true;
   SearchMusic.stop();
   document.getElementById('dmg').style.opacity='1';
+  addShake(0.30);
   sndScare();Music.outro();
   setTimeout(function(){
     document.getElementById('endtitle').style.color='#c02020';
@@ -2442,6 +2444,7 @@ function hallCaught(){
   if(window.ADMIN&&ADMIN.god)return;
   HL.caught=true;dead=true;
   document.getElementById('dmg').style.opacity='1';
+  addShake(0.30);
   sndScare();Music.outro();
   if(WP.active)closeWires();
   setTimeout(function(){
@@ -5255,6 +5258,7 @@ function huntCaught(){
   if(window.ADMIN&&ADMIN.god)return;
   HN.armed=false;dead=true;US.on=false;
   document.getElementById('dmg').style.opacity='1';
+  addShake(0.30);
   sndScare();
   setTimeout(function(){
     document.getElementById('endtitle').style.color='#c02020';
@@ -6795,6 +6799,7 @@ function triggerBetrayal(){
   if(typeof sndScare==='function')sndScare();
   setTimeout(function(){
     var d=document.getElementById('dmg');if(d)d.style.opacity='1';
+    addShake(0.30);
     sndBetrayHit();
     if(typeof flash==='function')flash(0.9,300);
     setTimeout(function(){
@@ -7519,6 +7524,7 @@ function getAC(){
   if(AC&&AC.state==='suspended')try{AC.resume();}catch(e){}
   return AC;
 }
+function addShake(amt){P.shake=Math.min(0.4,(P.shake||0)+amt);}
 // Заранее сгенерированные реплики (Fish Audio S2.1 Pro) — см. MASTERPLAN.md,
 // осознанное исключение из «ноль внешних файлов», как и icons/skins/*.png (Этап 21).
 // Ключ — точный текст, который передаётся в sayE(); новых реплик без записи
@@ -8803,12 +8809,23 @@ function applyCamera(moved,run){
   if(Math.abs(camera.fov-P.fov)>0.05){camera.fov=P.fov;camera.updateProjectionMatrix();}
   P.landKick=(P.landKick||0)*0.82;
   if(P.landKick<0.001)P.landKick=0;
-  camera.position.set(P.x,(P.eye||EYE_H)+P.y+bob-P.landKick,P.z);
+  // Тряска камеры при уроне — сейчас была только красная вспышка dmg
+  // на экране, без позиционного удара. addShake() зовётся из мест
+  // поимки/урона, здесь только гаснет и применяется.
+  P.shake=(P.shake||0)*0.88;if(P.shake<0.002)P.shake=0;
+  var shX=0,shY=0,shR=0;
+  if(P.shake>0){
+    shX=(Math.random()-0.5)*P.shake*0.35;
+    shY=(Math.random()-0.5)*P.shake*0.35;
+    shR=(Math.random()-0.5)*P.shake*0.06;
+  }
+  camera.position.set(P.x+shX,(P.eye||EYE_H)+P.y+bob-P.landKick+shY,P.z);
   camera.rotation.order='YXZ';
   camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
   // ВАЖНО: после спуска по трубе камера оставалась накрененной по Z,
-  // и весь мир выглядел перевёрнутым. Сбрасываем крен и «верх» всегда.
-  camera.rotation.z=0;
+  // и весь мир выглядел перевёрнутым. Сбрасываем крен и «верх» всегда —
+  // shR (тряска от урона) намеренно мизерный, так не возвращается.
+  camera.rotation.z=shR;
   if(camera.up.x!==0||camera.up.y!==1)camera.up.set(0,1,0);
 }
 
