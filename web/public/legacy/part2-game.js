@@ -150,8 +150,33 @@ function box(w,h,d,mat,x,y,z,ry){
   return addObj(m2);
 }
 
+function makeEnvMap(){
+  // Простая процедурная env-карта (6 маленьких градиентных canvas-
+  // граней, тёплый горизонт/тёмный верх-низ) — до этого
+  // envMapIntensity уже был выставлен на все материалы
+  // (DETAIL.upgradeMaterials), но отражать было нечего, параметр
+  // был мёртвым. Дешёво (6×64×64), можно на любом уровне качества.
+  var size=64;
+  function face(top,bottom){
+    var c=document.createElement('canvas');c.width=size;c.height=size;
+    var ctx=c.getContext('2d');
+    var g=ctx.createLinearGradient(0,0,0,size);
+    g.addColorStop(0,top);g.addColorStop(1,bottom);
+    ctx.fillStyle=g;ctx.fillRect(0,0,size,size);
+    return c;
+  }
+  var horizon='#3a3020',sky='#0a0806',floorC='#141008';
+  var cube=new THREE.CubeTexture([
+    face(horizon,horizon),face(horizon,horizon),
+    face(sky,horizon),face(horizon,floorC),
+    face(horizon,horizon),face(horizon,horizon)
+  ]);
+  cube.needsUpdate=true;
+  return cube;
+}
 function initThree(){
   scene=new THREE.Scene();
+  scene.environment=makeEnvMap();
   renderer=new THREE.WebGLRenderer({antialias:window.DETAIL?DETAIL.wantAA():false});
   renderer.setSize(W,H);
   // Потолок разрешения задаёт DETAIL и сам двигает его по загрузке кадра.
