@@ -743,9 +743,11 @@ function hasLineOfSight(x1,z1,x2,z2){
 //  SCENE BUILDER
 // ============================================================
 var sceneObjects=[];
+var VASES=[];   // интерактивная мелочь — вазы, которые можно толкнуть
 function clearScene(){
   sceneObjects.forEach(function(o){scene.remove(o);if(o.geometry)o.geometry.dispose();});
   sceneObjects=[];
+  VASES.length=0;
   // Босс секретной концовки живёт вне sceneObjects — прячем его вручную,
   // иначе он торчит на каждом следующем этаже в одной и той же точке.
   if(typeof bossMesh!=='undefined'&&bossMesh)bossMesh.visible=false;
@@ -810,9 +812,11 @@ function buildFloor(floorNum){
         // мелкий реквизит на полу — не привязан к стене, просто
         // разбросан по свободным клеткам, для ощущения захламлённого
         // закрытого магазина, а не пустой коробки с коридорами
-        else if(!(wnx||wnz)&&Math.random()<0.025){
-          if(Math.random()<0.6)buildBoxCluster(cx,cz);
-          else buildFallenChair(cx,cz);
+        else if(!(wnx||wnz)&&Math.random()<0.03){
+          var r2=Math.random();
+          if(r2<0.45)buildBoxCluster(cx,cz);
+          else if(r2<0.75)buildFallenChair(cx,cz);
+          else buildVaseStand(cx,cz);
         }
       }
 
@@ -1145,6 +1149,57 @@ function buildBrokenCase(cx,cz,nx,nz){
     g.add(fs);
   }
   addObj(g);
+}
+function buildVaseStand(cx,cz){
+  // интерактивная мелочь: пьедестал с вазой, которую можно толкнуть
+  // рядом (E) — ваза падает набок и остаётся лежать, со звуком боя
+  var standM=new THREE.MeshStandardMaterial({color:0x2a2620,roughness:0.8});
+  var vaseM=new THREE.MeshStandardMaterial({color:0x3a5a4a,roughness:0.35,metalness:0.1});
+  var g=new THREE.Group();
+  g.position.set(cx,0,cz);
+  var stand=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.13,0.62,10),standM);
+  stand.position.y=0.31;stand.castShadow=true;stand.receiveShadow=true;g.add(stand);
+  var vase=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.13,0.30,12),vaseM);
+  vase.position.y=0.77;vase.castShadow=true;g.add(vase);
+  addObj(g);
+  VASES.push({g:g,vase:vase,x:cx,z:cz,knocked:false});
+}
+function sndCrash(){
+  var a=getAC();if(!a)return;
+  for(var i=0;i<7;i++){
+    (function(i){
+      setTimeout(function(){
+        var o=a.createOscillator(),g=a.createGain();
+        o.type='square';o.frequency.value=900+Math.random()*2200;
+        g.gain.setValueAtTime(0.14,a.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.05+Math.random()*0.05);
+        o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+0.11);
+      },i*22+Math.random()*20);
+    })(i);
+  }
+  var o2=a.createOscillator(),g2=a.createGain();
+  o2.type='sawtooth';o2.frequency.setValueAtTime(140,a.currentTime);
+  o2.frequency.exponentialRampToValueAtTime(40,a.currentTime+0.3);
+  g2.gain.setValueAtTime(0.22,a.currentTime);
+  g2.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.32);
+  o2.connect(g2);g2.connect(a.destination);o2.start();o2.stop(a.currentTime+0.33);
+}
+function knockVase(v){
+  if(v.knocked)return;
+  v.knocked=true;
+  sndCrash();
+  addShake(0.05);
+  // ваза падает набок и остаётся лежать — простая довороты, без физики
+  var fallDir=Math.random()*Math.PI*2;
+  var t0=performance.now();
+  function anim(){
+    var t=Math.min(1,(performance.now()-t0)/380);
+    v.vase.rotation.x=Math.sin(fallDir)*Math.PI/2*t;
+    v.vase.rotation.z=Math.cos(fallDir)*Math.PI/2*t;
+    v.vase.position.y=0.77-0.62*t;
+    if(t<1)requestAnimationFrame(anim);
+  }
+  anim();
 }
 function buildPoster(cx,cz,nx,nz){
   // рекламный плакат на стене — плоская плоскость вплотную к стене
@@ -2613,6 +2668,7 @@ function trapHit(){if(P.trapped)return;if(window.ADMIN&&ADMIN.god)return;P.trapp
 // ============================================================
 var nDoor=false,nStairs=false,nBed=false,nFakeExit=false,nExit=false,nSleep=false,nGen=null;
 var nSleepCell=null;
+var nVase=null;
 function doAct(){
   if(dead||HG.active||WP.active||DL.active)return;
   if(nMission||nBag)missionAct();
@@ -2624,6 +2680,7 @@ function doAct(){
   else if(nStairs)goUp();
   else if(nBed&&entities.some(function(e){return e.chase;}))hideBed();
   else if(nDoor)doorTry();
+  else if(nVase)knockVase(nVase);
 }
 function doorTry(){P.doorN++;var t=P.doorN===1?'Закрыто.':P.doorN===2?'Заперто...':'Да блин, все двери заперты!';showMsg(t,2500);say(t,0.82,0.52);}
 
@@ -2902,6 +2959,13 @@ function checkNear(){
         return;
       }
     }
+  }
+  nVase=null;
+  for(var vi=0;vi<VASES.length;vi++){
+    var vs=VASES[vi];
+    if(vs.knocked)continue;
+    var vdx=P.x-vs.x, vdz=P.z-vs.z;
+    if(vdx*vdx+vdz*vdz<1.1){nVase=vs;setPrompt('🏺 ТОЛКНУТЬ — E',true);return;}
   }
   setPrompt('',false);
 }
