@@ -799,6 +799,8 @@ function buildFloor(floorNum){
     // на чердаке света нет — только фонарик
     for(var az=5;az<19;az+=7){var al=new THREE.PointLight(0xffb070,0.10,4);al.position.set(10,2.2,az);addObj(al);}
   }
+
+  if(floorNum===1||floorNum===2)spawnMission(floorNum);
 }
 
 function buildTrap(cx,cz){
@@ -1012,6 +1014,95 @@ function buildShelf(cx,cz,nx,nz){
     pot.position.set(-0.18+pi*0.36,0.085,0);pot.castShadow=true;g.add(pot);
   }
   addObj(g);
+}
+
+// ============================================================
+//  МИССИИ 1-2 ЭТАЖА — спасение спрятавшегося человека, задел под
+//  Этап 25 (спасённые становятся друзьями). Разный характер по этажам:
+//  этаж 1 — спокойный поиск по этажу; этаж 2 — то же самое, но там уже
+//  бродит мебельщик, так что искать приходится осторожнее (та же
+//  механика поиска, другая динамика напряжения — задел под будущие
+//  отдельные механики Этапа 24, не разные миссии в один присест).
+// ============================================================
+function makeSurvivor(){
+  // сидит на полу, обхватив колени — поза "прячется/ждёт", чтобы
+  // силуэт читался сразу как "человек, не мебельщик"
+  var g=new THREE.Group();
+  var skinM=new THREE.MeshStandardMaterial({color:0xc89a78,roughness:0.85});
+  var clothM=new THREE.MeshStandardMaterial({color:0x2a4a5a,roughness:0.9});
+  var torso=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.42,0.24),clothM);
+  torso.position.y=0.55;g.add(torso);
+  var head=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.24,0.22),skinM);
+  head.position.y=0.86;g.add(head);
+  [-0.13,0.13].forEach(function(dx){
+    var thigh=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.14,0.34),clothM);
+    thigh.position.set(dx,0.36,0.13);thigh.rotation.x=-0.7;g.add(thigh);
+    var shin=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.30,0.13),clothM);
+    shin.position.set(dx,0.22,0.30);shin.rotation.x=0.9;g.add(shin);
+    var arm=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.30,0.10),skinM);
+    arm.position.set(dx*1.5,0.55,0.12);arm.rotation.x=-0.9;g.add(arm);
+  });
+  var eyeM=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff8e0,emissiveIntensity:0.6});
+  [-0.045,0.045].forEach(function(dx){
+    var e=new THREE.Mesh(new THREE.SphereGeometry(0.018,6,6),eyeM);
+    e.position.set(dx,0.87,0.11);g.add(e);
+  });
+  var pl=new THREE.PointLight(0xfff2c0,0.35,3);pl.position.set(0,0.9,0);g.add(pl);
+  return g;
+}
+var MISSION={1:{tx:0,tz:0,mesh:null,found:false},2:{tx:0,tz:0,mesh:null,found:false}};
+function pickMissionSpot(map,sx,sz){
+  var cand=[];
+  for(var z=1;z<19;z++)for(var x=1;x<19;x++){
+    if(map[z][x]!==0)continue;
+    var dx=x+0.5-sx,dz=z+0.5-sz;
+    if(dx*dx+dz*dz>90)cand.push([x+0.5,z+0.5]);
+  }
+  if(!cand.length)return null;
+  return cand[Math.floor(Math.random()*cand.length)];
+}
+function spawnMission(floorNum){
+  var M=MISSION[floorNum];
+  if(!M)return;
+  M.mesh=null;
+  var key='p1_mission'+floorNum;
+  if(window.Progress&&Progress.isCompleteSync(key)){M.found=true;return;}
+  M.found=false;
+  var cfg=floorCfg(floorNum);
+  var spot=pickMissionSpot(MAPS[floorNum],cfg.x,cfg.z);
+  if(!spot)return;
+  M.tx=spot[0];M.tz=spot[1];
+  var g=makeSurvivor();
+  g.rotation.y=Math.random()*6.28;
+  g.position.set(M.tx,0,M.tz);
+  addObj(g);
+  M.mesh=g;
+  if(floorNum===1)showMsg('Кажется, кто-то есть на этаже. Стоит поискать.',3.4);
+  else showMsg('Ещё один прячется здесь. Мебельщик рядом — тише.',3.6);
+}
+var nMission=null;
+function checkMissionNear(){
+  nMission=null;
+  var M=MISSION[P.floor];
+  if(!M||!M.mesh||M.found)return false;
+  var dx=P.x-M.tx,dz=P.z-M.tz;
+  if(dx*dx+dz*dz<2.4){
+    nMission=M;
+    setPrompt('🧍 ОСВОБОДИТЬ — E',true);
+    return true;
+  }
+  return false;
+}
+function missionAct(){
+  var M=nMission;if(!M)return;
+  M.found=true;
+  if(M.mesh){scene.remove(M.mesh);M.mesh=null;}
+  var key='p1_mission'+P.floor;
+  if(window.Progress)Progress.markComplete(key);
+  if(window.Coins)Coins.earn(25,'спас человека — этаж '+P.floor);
+  var line=P.floor===1?'Живой. Идём, тут нельзя оставаться.':'Тихо... идём, пока не заметил.';
+  showMsg(line,3.0);if(typeof say==='function')say(line,0.85,0.55);
+  nMission=null;setPrompt('',false);
 }
 
 // ============================================================
@@ -2268,7 +2359,8 @@ var nDoor=false,nStairs=false,nBed=false,nFakeExit=false,nExit=false,nSleep=fals
 var nSleepCell=null;
 function doAct(){
   if(dead||HG.active||WP.active||DL.active)return;
-  if(nPick)takePick();
+  if(nMission)missionAct();
+  else if(nPick)takePick();
   else if(nGen)genAct(nGen);
   else if(nExit)exitTry();
   else if(nSleep)secretSleep();
@@ -2499,6 +2591,7 @@ function checkNear(){
   var lx=P.x-Math.sin(P.yaw)*0.9,lz=P.z-Math.cos(P.yaw)*0.9;
   var v=getCell(lx,lz);
   nDoor=false;nStairs=false;nBed=false;nFakeExit=false;nExit=false;nSleep=false;nGen=null;nPick=false;nSleepCell=null;
+  if((P.floor===1||P.floor===2)&&checkMissionNear())return;
   if(P.floor===4){
     var ng=nearGen();
     if(ng){
