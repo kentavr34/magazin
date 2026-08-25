@@ -8734,7 +8734,13 @@ function update(ts){
   var cr=mCrouch||K['ControlLeft']||K['ControlRight'];
   var fwd=(K['KeyW']?1:0)-(K['KeyS']?1:0)+(-jmy);
   var str=(K['KeyD']?1:0)-(K['KeyA']?1:0)+(jmx);
-  var spd=(run?0.098:0.058)*(cr?0.52:1)*dt*60*(window.ADMIN?ADMIN.speedMul():1);
+  // Разгон и торможение вместо мгновенной скорости — тот же приём, что и в part1:
+  // нажал — секунду набирает ход, отпустил — не встаёт как вкопанный.
+  var movingNow=(Math.abs(fwd)>0.03)||(Math.abs(str)>0.03);
+  if(P.moveRamp===undefined)P.moveRamp=0;
+  var rampTarget=movingNow?1:0;
+  P.moveRamp+=(rampTarget-P.moveRamp)*(rampTarget>P.moveRamp?0.16:0.26);
+  var spd=(run?0.098:0.058)*(cr?0.52:1)*dt*60*P.moveRamp*(window.ADMIN?ADMIN.speedMul():1);
 
   var dirFX=-Math.sin(P.yaw),dirFZ=-Math.cos(P.yaw);
   var dirRX=Math.cos(P.yaw), dirRZ=-Math.sin(P.yaw);
