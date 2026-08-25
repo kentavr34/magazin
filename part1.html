@@ -551,6 +551,39 @@ TEX.mattress=makeTex(function(g,s){
   g.strokeStyle='rgba(90,80,65,0.35)';g.lineWidth=1.2;  // простёжка
   for(var i=32;i<s;i+=64){g.beginPath();g.moveTo(i,0);g.lineTo(i,s);g.moveTo(0,i);g.lineTo(s,i);g.stroke();}
 },2);
+// Картон коробок — для мелкого реквизита (Этап "больше реквизита")
+TEX.cardboard=makeTex(function(g,s){
+  g.fillStyle='#b3874f';g.fillRect(0,0,s,s);
+  blotch(g,s,10,'rgba(90,60,30,0.20)',20,60);
+  speckle(g,s,3000,140,105,65,0.18);
+  g.strokeStyle='rgba(70,45,20,0.55)';g.lineWidth=3;      // клейкая лента крестом
+  g.beginPath();g.moveTo(0,s*0.5);g.lineTo(s,s*0.5);g.moveTo(s*0.5,0);g.lineTo(s*0.5,s);g.stroke();
+  g.strokeStyle='rgba(60,38,16,0.4)';g.lineWidth=1.4;      // рёбра гофрокартона
+  for(var i=6;i<s;i+=14){g.beginPath();g.moveTo(0,i);g.lineTo(s,i);g.stroke();}
+},1);
+// Рекламные плакаты мебельного магазина — 2 варианта для разнообразия,
+// рисуются в отдельном канвасе (не квадратном makeTex), поэтому свои функции.
+var POSTER_TEX=[];
+function makePosterTex(variant){
+  var c=document.createElement('canvas');c.width=180;c.height=240;
+  var g=c.getContext('2d');
+  var bg=variant===0?'#7a2020':'#1a4a3a';
+  g.fillStyle=bg;g.fillRect(0,0,180,240);
+  g.fillStyle='rgba(0,0,0,0.25)';g.fillRect(0,0,180,40);
+  g.fillStyle='#f0e0c0';g.font='bold 22px Arial';g.textAlign='center';
+  g.fillText(variant===0?'РАСПРОДАЖА':'НОВИНКА',90,28);
+  g.strokeStyle='rgba(240,224,192,0.6)';g.lineWidth=3;
+  g.strokeRect(10,50,160,150);
+  g.fillStyle='rgba(240,224,192,0.15)';
+  g.fillRect(24,64,132,122);
+  g.fillStyle='#f0e0c0';g.font='bold 40px Arial';
+  g.fillText(variant===0?'-50%':'НОВОЕ',90,140);
+  g.font='11px Arial';g.fillStyle='rgba(240,224,192,0.75)';
+  g.fillText(variant===0?'ТОЛЬКО ДО КОНЦА МЕСЯЦА':'КОЛЛЕКЦИЯ ЭТОГО ГОДА',90,215);
+  var t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;
+  return t;
+}
+POSTER_TEX[0]=makePosterTex(0);POSTER_TEX[1]=makePosterTex(1);
 
 // --- применяем: map + bumpMap из той же картинки (рельеф почти бесплатно) ---
 function skin(m,tex,bump){
@@ -767,9 +800,18 @@ function buildFloor(floorNum){
         else if(x<19&&map[z][x+1]===1)wnx=-1;
         else if(z>0&&map[z-1][x]===1)wnz=1;
         else if(z<19&&map[z+1][x]===1)wnz=-1;
-        if((wnx||wnz)&&Math.random()<0.05){
-          if(Math.random()<0.5)buildMirror(cx,cz,wnx,wnz);
-          else buildShelf(cx,cz,wnx,wnz);
+        if((wnx||wnz)&&Math.random()<0.06){
+          var r=Math.random();
+          if(r<0.34)buildMirror(cx,cz,wnx,wnz);
+          else if(r<0.67)buildShelf(cx,cz,wnx,wnz);
+          else buildPoster(cx,cz,wnx,wnz);
+        }
+        // мелкий реквизит на полу — не привязан к стене, просто
+        // разбросан по свободным клеткам, для ощущения захламлённого
+        // закрытого магазина, а не пустой коробки с коридорами
+        else if(!(wnx||wnz)&&Math.random()<0.025){
+          if(Math.random()<0.6)buildBoxCluster(cx,cz);
+          else buildFallenChair(cx,cz);
         }
       }
 
@@ -1059,6 +1101,51 @@ function buildShelf(cx,cz,nx,nz){
     var pot=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.12,8),potM);
     pot.position.set(-0.18+pi*0.36,0.085,0);pot.castShadow=true;g.add(pot);
   }
+  addObj(g);
+}
+function buildPoster(cx,cz,nx,nz){
+  // рекламный плакат на стене — плоская плоскость вплотную к стене
+  var tex=POSTER_TEX[Math.random()<0.5?0:1];
+  var m=new THREE.MeshStandardMaterial({map:tex,roughness:0.7});
+  var g=new THREE.Group();
+  g.position.set(cx-nx*0.485,1.4,cz-nz*0.485);
+  g.rotation.y=Math.atan2(nx,nz);
+  var plane=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.68),m);
+  g.add(plane);
+  addObj(g);
+}
+function buildBoxCluster(cx,cz){
+  // стопка картонных коробок разного размера — просто декор, без
+  // коллизии, чтобы не запирать проходимые клетки случайно
+  var m=new THREE.MeshStandardMaterial({map:TEX.cardboard,roughness:0.85});
+  var n=2+Math.floor(Math.random()*2);
+  var yStack=0;
+  var jx=(Math.random()-0.5)*0.3, jz=(Math.random()-0.5)*0.3;
+  for(var i=0;i<n;i++){
+    var sz=0.30-i*0.05+Math.random()*0.05;
+    var b=box(sz,sz,sz,m,cx+jx+(Math.random()-0.5)*0.06,yStack+sz/2,cz+jz+(Math.random()-0.5)*0.06);
+    b.rotation.y=Math.random()*0.5-0.25;
+    yStack+=sz;
+  }
+}
+function buildFallenChair(cx,cz){
+  // опрокинутый стул/табурет — читается как след борьбы/паники,
+  // не мебельщика в бою, а просто беспорядок в заброшенном магазине
+  var woodM=new THREE.MeshStandardMaterial({color:0x4a3018,roughness:0.85,map:TEX.wood});
+  var g=new THREE.Group();
+  var seat=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.04,0.36),woodM);
+  seat.position.set(0,0.18,0);g.add(seat);
+  for(var i=0;i<4;i++){
+    var leg=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.40,0.035),woodM);
+    var lx=(i%2?0.15:-0.15), lz=(i<2?0.15:-0.15);
+    leg.position.set(lx,-0.02,lz);
+    g.add(leg);
+  }
+  // кладём на бок: центр стула поднят на половину его "ширины лёжа",
+  // чтобы после поворота он не проваливался в пол
+  g.rotation.z=Math.PI/2*(Math.random()<0.5?1:-1);
+  g.rotation.y=Math.random()*Math.PI*2;
+  g.position.set(cx+(Math.random()-0.5)*0.4,0.18,cz+(Math.random()-0.5)*0.4);
   addObj(g);
 }
 
