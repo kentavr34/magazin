@@ -1351,11 +1351,18 @@ var entityMeshes=[];
 function createEntityMesh(){
   // Торс + отдельные ноги/руки на шарнирах (вместо одной сплошной
   // коробки), чтобы можно было анимировать шаг — walkCycle() качает
-  // именно эти шарниры.
+  // именно эти шарниры. Торс — два яруса (пошире внизу, поуже вверху,
+  // силуэт тумбочки), настоящая голова вместо глаз, висящих в воздухе
+  // без формы за ними (было раньше) — тот же принцип детализации,
+  // что и у createBossMesh() (Этап 23).
   var g=new THREE.Group();
   var m=new THREE.MeshStandardMaterial({color:0x5a1a1a,roughness:0.9,emissive:0x2a0505,emissiveIntensity:0.6});
-  var torso=new THREE.Mesh(new THREE.BoxGeometry(0.8,1.3,0.2),m);
-  torso.position.y=0.45;g.add(torso);
+  var torsoLo=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.75,0.22),m);
+  torsoLo.position.y=0.15;g.add(torsoLo);
+  var torsoHi=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.6,0.18),m);
+  torsoHi.position.y=0.78;g.add(torsoHi);
+  var head=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,0.28),m);
+  head.position.y=1.24;g.add(head);
   var legGeo=new THREE.BoxGeometry(0.28,0.9,0.28);
   g.userData.legs=[];
   [-0.18,0.18].forEach(function(dx){
@@ -1370,11 +1377,11 @@ function createEntityMesh(){
     var a=new THREE.Mesh(armGeo,m);a.position.y=-0.4;piv.add(a);
     g.add(piv);g.userData.arms.push(piv);
   });
-  // Eyes
+  // Eyes — теперь на самой голове, а не подвешены отдельно в пустоте
   var eg=new THREE.SphereGeometry(0.06,8,8);
   var em=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:2});
-  var el=new THREE.Mesh(eg,em);el.position.set(-0.18,0.8,0.11);g.add(el);
-  var er=new THREE.Mesh(eg,em);er.position.set(0.18,0.8,0.11);g.add(er);
+  var el=new THREE.Mesh(eg,em);el.position.set(-0.1,1.26,0.15);g.add(el);
+  var er=new THREE.Mesh(eg,em);er.position.set(0.1,1.26,0.15);g.add(er);
   g.userData.eyes=[el,er];
   return g;
 }
