@@ -4027,7 +4027,72 @@ function buildCandleRoom(){
   });
   scene.fog=new THREE.FogExp2(0x140c06,0.10);
   ambientLight.intensity=0.07;ambientLight.color.setHex(0xffd8a0);sunLight.intensity=0;
+  buildTV(0.5,3.9,1.2,Math.PI/2);
   spawnFriends();
+  setTimeout(playNews,12800);
+}
+
+// ============================================================
+//  ТЕЛЕВИЗОР НА БАЗЕ — Этап 27: диктор + процедурная картинка.
+//  Осознанно НЕ фотореалистичные сгенерированные фото (это был бы
+//  внешний ассет уровня Этапа 21 на десятки картинок, а не разовое
+//  исключение) — рисуем на canvas тем же приёмом, что и все текстуры
+//  игры, «ноль внешних файлов» действует и здесь.
+// ============================================================
+var TV_DEFS=[
+  {key:'p1_mission1',name:'Игорь Соколов',age:'34 года',
+   line:'В районе снова тревога. Игорь Соколов, тридцать четыре года, зашёл в старый мебельный магазин — и пропал.'},
+  {key:'p1_mission2',name:'Марина Волкова',age:'27 лет',
+   line:'Ещё одно исчезновение. Марина Волкова заходила в тот же магазин неделей раньше. До сих пор не найдена.'}
+];
+var TV_WRAP='Пропавшие, о которых мы недавно сообщали, найдены живыми. Но источники говорят — похожие случаи фиксируют и в других районах города.';
+function drawNewsCanvas(missing,person){
+  var c=document.createElement('canvas');c.width=256;c.height=192;
+  var ctx=c.getContext('2d');
+  var grad=ctx.createLinearGradient(0,0,256,140);
+  grad.addColorStop(0,'#16324a');grad.addColorStop(1,'#0a1420');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,256,140);
+  // силуэт — процедурная форма, не фото
+  ctx.fillStyle='#05070a';
+  ctx.beginPath();ctx.arc(60,66,20,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(40,86,40,56);
+  ctx.strokeStyle='#c9a227';ctx.lineWidth=3;ctx.strokeRect(22,26,76,118);
+  ctx.fillStyle='#8a1414';ctx.fillRect(0,140,256,52);
+  ctx.fillStyle='#fff';ctx.textAlign='center';
+  ctx.font='bold 15px sans-serif';
+  ctx.fillText(missing?'ПРОПАЛ(А) БЕЗ ВЕСТИ':'НАЙДЕН(А) ЖИВЫМ(ОЙ)',128,160);
+  ctx.font='12px sans-serif';
+  ctx.fillText(person?person.name:'ГОРОДСКИЕ НОВОСТИ',128,178);
+  return new THREE.CanvasTexture(c);
+}
+var TV_SCREEN=null;
+function buildTV(cx,cz,cy,ry){
+  var g=new THREE.Group();
+  g.position.set(cx,cy,cz);g.rotation.y=ry;
+  var bodyM=new THREE.MeshStandardMaterial({color:0x14100c,roughness:0.6});
+  var body=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.46,0.08),bodyM);
+  g.add(body);
+  var tex=drawNewsCanvas(true,null);
+  var screenM=new THREE.MeshBasicMaterial({map:tex});
+  var screen=new THREE.Mesh(new THREE.PlaneGeometry(0.52,0.38),screenM);
+  screen.position.z=0.041;g.add(screen);
+  TV_SCREEN=screen;
+  var glow=new THREE.PointLight(0x6a8ac0,0.5,2.2);glow.position.z=0.15;g.add(glow);
+  addObj(g);
+  return g;
+}
+function playNews(){
+  if(!TV_SCREEN)return;
+  var seg=null;
+  for(var i=0;i<TV_DEFS.length;i++){
+    if(!window.Progress||!Progress.isCompleteSync(TV_DEFS[i].key)){seg=TV_DEFS[i];break;}
+  }
+  var missing=!!seg,text=seg?seg.line:TV_WRAP,person=seg;
+  if(TV_SCREEN.material.map)TV_SCREEN.material.map.dispose();
+  TV_SCREEN.material.map=drawNewsCanvas(missing,person);
+  TV_SCREEN.material.needsUpdate=true;
+  showSub('Новости',text,4.6);
+  sayE(text);
 }
 
 // ============================================================
@@ -7434,7 +7499,10 @@ var VOICE_LINES={
   'Наверху что-то ходит. Железное.':'you_68',
   'Это сердце приюта. Отсюда управляют всем.':'you_69',
   'Залез в кабину. Дальше — через кузов.':'you_70',
-  'Это какая-то дверь. Может быть, подойдёт мой ключ, который я взял?':'you_71'
+  'Это какая-то дверь. Может быть, подойдёт мой ключ, который я взял?':'you_71',
+  'В районе снова тревога. Игорь Соколов, тридцать четыре года, зашёл в старый мебельный магазин — и пропал.':'diktor_01',
+  'Ещё одно исчезновение. Марина Волкова заходила в тот же магазин неделей раньше. До сих пор не найдена.':'diktor_02',
+  'Пропавшие, о которых мы недавно сообщали, найдены живыми. Но источники говорят — похожие случаи фиксируют и в других районах города.':'diktor_03'
 };
 var VOICE_CACHE={};
 function sayE(txt){
