@@ -4486,17 +4486,23 @@ function makeFriend(hue){
   torso.position.y=1.05;g.add(torso);
   var head=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.26,0.24),skinM);
   head.position.y=1.48;g.add(head);
+  var arms=[];
   [-0.12,0.12].forEach(function(dx){
     var leg=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.72,0.14),clothM);
     leg.position.set(dx,0.36,0);g.add(leg);
     var arm=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.5,0.11),skinM);
     arm.position.set(dx*2.0,1.05,0);g.add(arm);
+    arms.push(arm);
   });
   var eyeM=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xfff8e0,emissiveIntensity:0.6});
   [-0.05,0.05].forEach(function(dx){
     var e=new THREE.Mesh(new THREE.SphereGeometry(0.02,6,6),eyeM);
     e.position.set(dx,1.50,0.13);g.add(e);
   });
+  // ссылки на части для покачивания в такт музыки (см. updateFriendsDance) —
+  // Этап 26, "тусовка" с несколькими друзьями разом
+  g.userData.torso=torso;g.userData.head=head;g.userData.arms=arms;
+  g.userData.baseTorsoY=torso.position.y;g.userData.baseHeadY=head.position.y;
   return g;
 }
 var FRIEND_DEFS=[
@@ -4519,8 +4525,10 @@ function sndCelebrate(){
     o.start(t);o.stop(t+0.36);
   });
 }
+var FRIENDS=[];
 function spawnFriends(){
   if(!window.Progress)return;
+  FRIENDS.length=0;
   var spots=[[1.2,6.6],[6.7,4.6],[7.0,1.3],[1.0,1.3]];
   var names=[],newFriends=[],i=0;
   FRIEND_DEFS.forEach(function(f){
@@ -4531,6 +4539,7 @@ function spawnFriends(){
     g.rotation.y=Math.random()*6.28;
     g.userData.friendName=f.name;
     addObj(g);
+    FRIENDS.push({g:g,ph:Math.random()*6.28,baseY:g.rotation.y});
     names.push(f.name);
     var celKey='celebrated_'+f.key;
     if(!Progress.isCompleteSync(celKey)){
@@ -4551,6 +4560,43 @@ function spawnFriends(){
   }else if(names.length){
     setTimeout(function(){showMsg('На базе '+names.join(' и ')+'.',3.0);},9800);
   }
+}
+
+// Тусовка под музыку — Этап 26, то, чего не хватало: раньше друзья на
+// базе просто стояли столбами. Пока играет ReunionMusic, каждый мягко
+// покачивается в такт (свой сдвиг фазы, чтобы не двигались синхронно,
+// как солдаты) — торс/голова вверх-вниз, руки в противофазе, лёгкий
+// разворот корпуса. Без полноценного скелета/костей — тот же приём,
+// что и walkCycle() в part1.html, просто по амплитуде другой ритм.
+var danceT=0;
+var DANCE_BEAT=60/88;   // тот же темп, что у ReunionMusic (BPM=88) — своя константа,
+                        // т.к. BEAT внутри ReunionMusic не наружу не торчит
+function updateFriendsDance(dt){
+  if(!FRIENDS.length)return;
+  var on=window.ReunionMusic&&ReunionMusic.isOn();
+  danceT+=dt*(on?1:0.4);   // без музыки фаза почти замирает, не дёргается рывком
+  var beat=2*Math.PI/DANCE_BEAT;   // один полный цикл покачивания — один такт
+  FRIENDS.forEach(function(fr){
+    var g=fr.g,ud=g.userData;
+    var target=on?1:0;
+    fr.amp=(fr.amp||0)+(target-(fr.amp||0))*0.06;
+    if(fr.amp<0.01&&!on){
+      // возврат в состояние покоя, без остаточного дрожания
+      if(ud.torso)ud.torso.position.y=ud.baseTorsoY;
+      if(ud.head)ud.head.position.y=ud.baseHeadY;
+      if(ud.arms)ud.arms.forEach(function(a){a.rotation.x=0;});
+      g.rotation.y=fr.baseY;
+      return;
+    }
+    var ph=danceT*beat+fr.ph;
+    var bob=Math.sin(ph)*0.05*fr.amp;
+    if(ud.torso)ud.torso.position.y=ud.baseTorsoY+bob;
+    if(ud.head)ud.head.position.y=ud.baseHeadY+bob*1.2;
+    if(ud.arms)ud.arms.forEach(function(a,ai){
+      a.rotation.x=Math.sin(ph+(ai?Math.PI:0))*0.5*fr.amp;
+    });
+    g.rotation.y=fr.baseY+Math.sin(ph*0.5)*0.35*fr.amp;
+  });
 }
 
 // ============================================================
@@ -4628,6 +4674,7 @@ function updateCandleRoom(dt){
   });
   cnNear();
   updateCompanion(dt);
+  updateFriendsDance(dt);
 }
 var nCn=null;
 function cnNear(){
@@ -7324,6 +7371,7 @@ function updateCandleReturn(dt){
   if(CN2.ally){
     CN2.ally.rotation.y=Math.atan2(P.x-CN2.ally.position.x,P.z-CN2.ally.position.z);
   }
+  updateFriendsDance(dt);
   if(t>CT2.l1&&CN2.step===0){
     CN2.step=1;
     showSub('Вы','Стоп. Лестница же упала. Обратно через вентиляцию не выйти.',4.4);sayE('Стоп. Лестница же упала. Обратно через вентиляцию не выйти.');
