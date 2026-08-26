@@ -4423,6 +4423,10 @@ var TV_DEFS=[
    line:'Ещё одно исчезновение. Марина Волкова заходила в тот же магазин неделей раньше. До сих пор не найдена.'}
 ];
 var TV_WRAP='Пропавшие, о которых мы недавно сообщали, найдены живыми. Но источники говорят — похожие случаи фиксируют и в других районах города.';
+// Второй раз на базе (candle2) TV_DEFS уже полностью пройден, и без этой
+// строки playNews() слово в слово повторил бы TV_WRAP — будто выпуск
+// новостей застыл во времени. Отдельная реплика для повторного визита.
+var TV_WRAP2='Дело о пропавших в мебельном официально закрыто. Но родственники говорят — на записях камер до сих пор мелькает что-то у входа, после закрытия.';
 function drawNewsCanvas(missing,person){
   var c=document.createElement('canvas');c.width=256;c.height=192;
   var ctx=c.getContext('2d');
@@ -4464,7 +4468,10 @@ function playNews(){
   for(var i=0;i<TV_DEFS.length;i++){
     if(!window.Progress||!Progress.isCompleteSync(TV_DEFS[i].key)){seg=TV_DEFS[i];break;}
   }
-  var missing=!!seg,text=seg?seg.line:TV_WRAP,person=seg;
+  var wrapSeen=window.Progress&&Progress.isCompleteSync('tv_wrap_seen');
+  var wrapLine=wrapSeen?TV_WRAP2:TV_WRAP;
+  if(!seg&&window.Progress)Progress.markComplete('tv_wrap_seen');
+  var missing=!!seg,text=seg?seg.line:wrapLine,person=seg;
   if(TV_SCREEN.material.map)TV_SCREEN.material.map.dispose();
   TV_SCREEN.material.map=drawNewsCanvas(missing,person);
   TV_SCREEN.material.needsUpdate=true;
@@ -6745,6 +6752,16 @@ function startThrone(){
   P.x=17;P.z=6;P.y=0;P.vy=0;P.yaw=Math.PI;P.pitch=0;P.eye=EYE_H;P.floorY=0;
   camera.rotation.z=0;camera.up.set(0,1,0);
   unstick();dead=false;mRun=false;syncBtn('brun',false);
+  // Тронный зал — отдельная срежиссированная сцена со своим спутником
+  // (Синий), затаскивать туда же ведомого друга с базы не для чего
+  // и негде — но раньше он просто молча пропадал (updateCompanion()
+  // не вызывается ни в updateThrone(), ни в secret2). Явно отпускаем
+  // его с репликой, вместо тихого исчезновения.
+  if(COMPANION.active){
+    var leftName=COMPANION.name;
+    companionStop();
+    showSub(leftName,'Дальше я с тобой не пойду. Жди меня здесь, ладно?',3.4);
+  }
   TR2.on=true;TR2.t=0;TR2.step=0;TR2.walking=false;
   saveAt('throne');
   questHide();
