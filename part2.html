@@ -4506,8 +4506,10 @@ function makeFriend(hue){
   return g;
 }
 var FRIEND_DEFS=[
-  {key:'p1_mission1',name:'Игорь',color:0x5a7a3a,greet:'Спасибо, что нашёл меня там...'},
-  {key:'p1_mission2',name:'Марина',color:0x8a4a6a,greet:'Даже не думала, что выберусь оттуда.'}
+  {key:'p1_mission1',name:'Игорь',color:0x5a7a3a,greet:'Спасибо, что нашёл меня там...',
+   backstory:'Я работал тут кладовщиком. Однажды после смены свет замигал, и я не смог найти дверь — а магазин будто стал больше, чем был.'},
+  {key:'p1_mission2',name:'Марина',color:0x8a4a6a,greet:'Даже не думала, что выберусь оттуда.',
+   backstory:'Зашла купить кресло к дню рождения. Кассирша сказала подождать за примерочными... я ждала там, кажется, очень долго.'}
 ];
 function sndCelebrate(){
   // короткий приветственный перезвон — Этап 26, отмечаем завершение
@@ -4538,6 +4540,8 @@ function spawnFriends(){
     g.position.set(p[0],0,p[1]);
     g.rotation.y=Math.random()*6.28;
     g.userData.friendName=f.name;
+    g.userData.friendKey=f.key;
+    g.userData.friendBackstory=f.backstory;
     addObj(g);
     FRIENDS.push({g:g,ph:Math.random()*6.28,baseY:g.rotation.y});
     names.push(f.name);
@@ -4699,8 +4703,16 @@ function cnAct(){
   }
   if(nCn==='companion'){
     if(nCompanionTarget){
-      companionSetLead(nCompanionTarget,nCompanionTarget.userData.friendName);
-      showMsg(nCompanionTarget.userData.friendName+' идёт с тобой.',2.2);
+      var ud=nCompanionTarget.userData;
+      companionSetLead(nCompanionTarget,ud.friendName);
+      showMsg(ud.friendName+' идёт с тобой.',2.2);
+      // предыстория — один раз на друга, при первом «позвать с собой»,
+      // закрывает KEN-33 (спасённые как полноценные персонажи, не молчаливые статисты)
+      var bkKey='backstory_'+ud.friendKey;
+      if(ud.friendBackstory&&window.Progress&&!Progress.isCompleteSync(bkKey)){
+        Progress.markComplete(bkKey);
+        setTimeout(function(){showSub(ud.friendName,ud.friendBackstory,5.5);},900);
+      }
     }
     return;
   }
@@ -7426,8 +7438,14 @@ function cn2Act(){
   }
   if(nCn2==='companion'){
     if(nCompanionTarget){
-      companionSetLead(nCompanionTarget,nCompanionTarget.userData.friendName);
-      showMsg(nCompanionTarget.userData.friendName+' идёт с тобой.',2.2);
+      var ud2=nCompanionTarget.userData;
+      companionSetLead(nCompanionTarget,ud2.friendName);
+      showMsg(ud2.friendName+' идёт с тобой.',2.2);
+      var bkKey2='backstory_'+ud2.friendKey;
+      if(ud2.friendBackstory&&window.Progress&&!Progress.isCompleteSync(bkKey2)){
+        Progress.markComplete(bkKey2);
+        setTimeout(function(){showSub(ud2.friendName,ud2.friendBackstory,5.5);},900);
+      }
     }
     return;
   }
