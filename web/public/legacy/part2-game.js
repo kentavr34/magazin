@@ -7416,20 +7416,73 @@ function bsAct(){
     }
     BS_COMPANION.want=false;
     Music.outro&&Music.outro();
-    // Это пока единственная точка, до которой дописан сюжет части II
-    // (дальше — клиффхэнгер), поэтому засчитываем прохождение здесь.
+    // Прохождение засчитываем здесь, как и раньше, но вместо мгновенного
+    // экрана «ПРОДОЛЖЕНИЕ СЛЕДУЕТ» — эпилог: возвращение на базу к
+    // спасённым, новости, финальная реплика. Глава закрывается, крючок
+    // на продолжение остаётся (Этап 28 / KEN-36).
     if(window.Coins&&window.Progress&&!Progress.isCompleteSync('part2_reward'))Coins.earn(150,'финал части II');
     if(window.Progress){Progress.markComplete('part2');Progress.markComplete('part2_reward');}
     document.getElementById('black').style.transition='opacity 1.6s';
     document.getElementById('black').style.opacity='1';
-    setTimeout(function(){
-      dead=true;
-      document.getElementById('endtitle').style.color='#3fa85f';
-      document.getElementById('endtitle').textContent='ПРОДОЛЖЕНИЕ СЛЕДУЕТ';
-      document.getElementById('endsub').textContent='Подвал был только началом.';
-      updateEndScreen();
-      document.getElementById('endscreen').style.display='flex';
-    },1800);
+    setTimeout(startEpilogue,1800);
+  }
+}
+// ============================================================
+//  ЭПИЛОГ ГЛАВЫ — база, друзья, новости, финальная реплика
+// ============================================================
+var EPI={on:false,t:0,step:0};
+function startEpilogue(){
+  PHASE='epilog';
+  buildCandleRoom();               // база: свечи, ТВ, друзья (playNews сам через 12.8с)
+  EPI.on=true;EPI.t=0;EPI.step=0;
+  P.x=4.5;P.z=6.5;P.y=0;P.vy=0;P.yaw=Math.PI;P.pitch=0;P.eye=EYE_H;P.floorY=0;
+  camera.rotation.z=0;camera.up.set(0,1,0);
+  unstick();dead=false;mRun=false;syncBtn('brun',false);
+  // руки пусты — мы дома, фонарь и пистолет убраны
+  FL2.on=false;FL2.shown=false;if(FL2.view)FL2.view.visible=false;
+  if(UV.view)UV.view.visible=false;if(UV.lamp)UV.lamp.intensity=0;
+  questHide();
+  if(!ReunionMusic.isOn())ReunionMusic.start();
+  document.getElementById('black').style.transition='opacity 2.2s';
+  document.getElementById('black').style.opacity='0';
+}
+function updateEpilogue(dt){
+  if(!EPI.on)return;
+  EPI.t+=dt;var t=EPI.t;
+  CN.candles.forEach(function(c){
+    c.userData.ph+=dt*7;
+    var f=0.75+Math.sin(c.userData.ph)*0.12+Math.sin(c.userData.ph*2.7)*0.06;
+    c.userData.light.intensity=f;
+    c.userData.flame.scale.set(1,1.8*(0.9+f*0.15),1);
+  });
+  updateFriendsDance(dt);
+  if(t>3.0&&EPI.step===0){
+    EPI.step=1;
+    showSub('Вы','База. Дошёл.',2.6);sayE('База. Дошёл.');
+  }
+  if(t>6.5&&EPI.step===1){
+    EPI.step=2;
+    if(FRIENDS.length){
+      var fn=FRIENDS[0].g.userData.friendName;
+      showSub(fn,'Что бы там внизу ни было — теперь мы встретим это вместе.',4.2);
+    }else{
+      showSub('Вы','Однажды я вытащу отсюда всех.',3.6);
+      sayE('Однажды я вытащу отсюда всех.');
+    }
+  }
+  // ~9.8с — реплика spawnFriends «На базе ...», ~12.8с — новости (playNews)
+  if(t>21.5&&EPI.step===2){
+    EPI.step=3;
+    showSub('Вы','Это не конец. Но сегодня можно выдохнуть.',3.8);
+    sayE('Это не конец. Но сегодня можно выдохнуть.');
+  }
+  if(t>26.5&&EPI.step===3){
+    EPI.step=4;EPI.on=false;dead=true;
+    document.getElementById('endtitle').style.color='#3fa85f';
+    document.getElementById('endtitle').textContent='ПРОДОЛЖЕНИЕ СЛЕДУЕТ';
+    document.getElementById('endsub').textContent='Глава завершена. Подвал был только началом.';
+    updateEndScreen();
+    document.getElementById('endscreen').style.display='flex';
   }
 }
 // ============================================================
@@ -7766,6 +7819,10 @@ var VOICE_LINES={
   'Людей забирают через щели между витринами. Магазин здесь не заканчивается там, где должен.':'siniy_16d',
   'Тот, кто лежит сейчас, не главный. Он просто нашёл тебя первым. Но выход есть, и я его знаю.':'siniy_17',
   'Дело о пропавших в мебельном официально закрыто. Но родственники говорят — на записях камер до сих пор мелькает что-то у входа, после закрытия.':'diktor_04',
+  // эпилог главы (Этап 28)
+  'База. Дошёл.':'ep_01',
+  'Однажды я вытащу отсюда всех.':'ep_02',
+  'Это не конец. Но сегодня можно выдохнуть.':'ep_03',
   'Да, я охранник. Что-то случилось?':'you_01',
   'Да... реально пахнет как мясо.':'you_02',
   'Фух... убежал.':'you_03',
@@ -8947,6 +9004,7 @@ function update(ts){
   if(PHASE==='throne')updateThrone(dt);
   if(PHASE==='candle2')updateCandleReturn(dt);
   if(PHASE==='basement')updateBasement(dt);
+  if(PHASE==='epilog')updateEpilogue(dt);
   if(PHASE==='secret2')updateSecret2(dt);
   if(PHASE==='tube'){updateTube(dt);return;}
 
