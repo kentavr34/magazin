@@ -7195,6 +7195,17 @@ function cn2Act(){
   }
   if(nCn2!=='hatch'||CN2.opened)return;
   CN2.opened=true;CN2.on=false;questDone();
+  // KEN-15: если ведём друга — он спускается в подвал ВМЕСТЕ с нами,
+  // а не молча исчезает при clearScene() (меш пересоздаётся в
+  // startBasement по этой записи). Первая настоящая сюжетная сцена
+  // с сопровождением, не демо на базе.
+  if(COMPANION.active){
+    BS_COMPANION.want=true;BS_COMPANION.name=COMPANION.name;
+    var bsDef=FRIEND_DEFS.filter(function(f){return f.name===COMPANION.name;})[0];
+    BS_COMPANION.color=bsDef?bsDef.color:0x5a7a3a;
+    showSub(COMPANION.name,'Я с тобой. Вдвоём не так страшно.',3.0);
+    companionStop();
+  }else BS_COMPANION.want=false;
   ReunionMusic.stop();
   sndCreak();
   if(CN.hatch){CN.hatch.rotation.z=-1.1;CN.hatch.position.y=0.35;}
@@ -7211,6 +7222,9 @@ function cn2Act(){
 // ============================================================
 var BS={on:false,t:0,cube:null,cubeX:0,cubeZ:0,plate:null,pushed:false,
         wall:null,bulbs:[],bats:[],exitOpen:false,exitAt:null};
+// друг, спускающийся с игроком в подвал (KEN-15) — заполняется в
+// cn2Act() при открытии люка, читается в startBasement()
+var BS_COMPANION={want:false,name:'',color:0,warned:false};
 
 function buildBasement(){
   clearScene();walls=[];LAMPS=[];BS.bulbs=[];BS.bats=[];BS.pushed=false;BS.exitOpen=false;
@@ -7291,6 +7305,16 @@ function startBasement(){
   unstick();dead=false;mRun=false;syncBtn('brun',false);
   initTorch();initUV();syncGear();
   if(FL2.has)FL2.on=true;
+  // друг спустился следом (см. cn2Act) — пересоздаём его меш в новой
+  // сцене и снова включаем следование
+  if(BS_COMPANION.want){
+    var bm=makeFriend(BS_COMPANION.color);
+    bm.position.set(P.x+0.9,0,P.z+0.9);
+    bm.userData.friendName=BS_COMPANION.name;
+    addObj(bm);
+    companionSetLead(bm,BS_COMPANION.name);
+    BS_COMPANION.warned=false;
+  }
   document.getElementById('black').style.transition='opacity 2.0s';
   document.getElementById('black').style.opacity='0';
   setTimeout(function(){showSub('Вы','Подвал. Тут ничего не видно.',3.0);sayE('Подвал. Тут ничего не видно.');},2200);
@@ -7302,6 +7326,13 @@ function startBasement(){
 function updateBasement(dt){
   if(!BS.on)return;
   BS.t+=dt;
+  updateCompanion(dt);
+  // ПРЕДУПРЕЖДАЕТ — состояние из паттерна KEN-15, впервые в настоящей
+  // сюжетной сцене: на полминуте друг останавливается и предупреждает
+  if(COMPANION.active&&!BS_COMPANION.warned&&BS.t>26){
+    BS_COMPANION.warned=true;
+    companionWarn('Тише. Что-то шуршит за колоннами. Не свети туда долго.');
+  }
   if(BS.cube)BS.cube.rotation.y+=dt*0.3;
   BS.bulbs.forEach(function(b){
     if(b.taken)return;
@@ -7371,6 +7402,13 @@ function bsAct(){
     FL2.charge=Math.min(1,FL2.charge+0.45);sndPickup();showMsg('Батарея +45%',1.8);
   }else if(nBs.t==='exit'){
     BS.on=false;questDone();
+    // на выходе (клиффхэнгер) друг прощается, а не исчезает молча
+    if(COMPANION.active){
+      var bsName=COMPANION.name;
+      showSub(bsName,'Дальше сам. Я вернусь к остальным — им тоже нужен кто-то.',3.6);
+      companionStop();
+    }
+    BS_COMPANION.want=false;
     Music.outro&&Music.outro();
     // Это пока единственная точка, до которой дописан сюжет части II
     // (дальше — клиффхэнгер), поэтому засчитываем прохождение здесь.
