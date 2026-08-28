@@ -6823,6 +6823,12 @@ function updateSecret2(dt){
     if(SECRET2.monster.userData.scan)SECRET2.monster.userData.scan.forEach(function(s,i){
       s.material.emissiveIntensity=1.5+Math.sin(SECRET2.t*3+i*1.4)*1.2;
     });
+    // Вторичная анимация (KEN-12): руки-лестницы медленно покачиваются
+    // вразнобой — «сканер» дышит, а не стоит манекеном
+    if(SECRET2.monster.userData.arms)SECRET2.monster.userData.arms.forEach(function(a,i){
+      a.rotation.x=Math.sin(SECRET2.t*0.7+i*Math.PI)*0.12;
+      a.rotation.z=Math.cos(SECRET2.t*0.5+i*1.7)*0.06;
+    });
   }
 }
 

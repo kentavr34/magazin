@@ -1340,12 +1340,28 @@ function createEntityMesh(){
   // что и у createBossMesh() (Этап 23).
   var g=new THREE.Group();
   var m=new THREE.MeshStandardMaterial({color:0x5a1a1a,roughness:0.9,emissive:0x2a0505,emissiveIntensity:0.6});
+  var darkM=new THREE.MeshStandardMaterial({color:0x2e0d0d,roughness:0.95});
+  var knobM=new THREE.MeshStandardMaterial({color:0x1a0808,roughness:0.5,metalness:0.6});
   var torsoLo=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.75,0.22),m);
   torsoLo.position.y=0.15;g.add(torsoLo);
+  // «ящики» на нижнем ярусе — врезные панели с ручками, чтобы силуэт
+  // читался как тумбочка, а не как гладкая коробка (KEN-12, тот же
+  // принцип, что фаски buildWardrobe в Этапе 18)
+  [-0.19,0.19].forEach(function(dy){
+    var drw=new THREE.Mesh(new THREE.BoxGeometry(0.64,0.26,0.03),darkM);
+    drw.position.set(0,dy,0.115);torsoLo.add(drw);
+    var knob=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.035,0.03),knobM);
+    knob.position.set(0,dy,0.14);torsoLo.add(knob);
+  });
   var torsoHi=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.6,0.18),m);
   torsoHi.position.y=0.78;g.add(torsoHi);
+  // столешница-кант сверху верхнего яруса — чуть шире самого яруса
+  var trim=new THREE.Mesh(new THREE.BoxGeometry(0.70,0.05,0.24),darkM);
+  trim.position.y=0.32;torsoHi.add(trim);
   var head=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,0.28),m);
   head.position.y=1.24;g.add(head);
+  g.userData.torsoLo=torsoLo;g.userData.torsoHi=torsoHi;g.userData.head=head;
+  g.userData.headBaseY=1.24;
   var legGeo=new THREE.BoxGeometry(0.28,0.9,0.28);
   g.userData.legs=[];
   [-0.18,0.18].forEach(function(dx){
@@ -1381,6 +1397,31 @@ function walkCycle(rig,dt,spd){
   var amp=Math.min(0.55,ud.walkSpd*0.5);
   ud.legs.forEach(function(leg,i){leg.rotation.x=Math.sin(ud.walkPhase+i*Math.PI)*amp;});
   if(ud.arms)ud.arms.forEach(function(arm,i){arm.rotation.x=Math.sin(ud.walkPhase+i*Math.PI+Math.PI)*amp*0.75;});
+  // Вторичное движение (KEN-12): торс слегка раскачивается в противовес
+  // шагу, голова стабилизируется (клюёт меньше и в противофазе) и чуть
+  // подпрыгивает на каждом шаге. В покое всё плавно затухает вместе с
+  // ud.walkSpd — отдельного сброса не нужно.
+  if(ud.torsoHi){
+    ud.torsoHi.rotation.z=Math.sin(ud.walkPhase)*amp*0.12;
+    if(ud.torsoLo)ud.torsoLo.rotation.z=Math.sin(ud.walkPhase)*amp*0.05;
+    if(ud.head){
+      ud.head.rotation.z=-Math.sin(ud.walkPhase)*amp*0.07;
+      ud.head.position.y=(ud.headBaseY||ud.head.position.y)+Math.abs(Math.cos(ud.walkPhase))*amp*0.045;
+    }
+  }
+}
+// Плавный доворот к цели вместо мгновенного разворота + наклон корпуса
+// в сторону поворота (инерция) — KEN-12. rate — скорость доворота.
+function smoothFace(mesh,tx,tz,dt,rate){
+  var ud=mesh.userData;
+  var tgt=Math.atan2(tx-mesh.position.x,tz-mesh.position.z);
+  if(ud.curYaw===undefined)ud.curYaw=tgt;
+  var dy=tgt-ud.curYaw;
+  while(dy>Math.PI)dy-=Math.PI*2;while(dy<-Math.PI)dy+=Math.PI*2;
+  ud.curYaw+=dy*Math.min(1,dt*(rate||7));
+  mesh.rotation.y=ud.curYaw;
+  ud.lean=(ud.lean||0)+(Math.max(-0.13,Math.min(0.13,-dy*1.4))-(ud.lean||0))*0.15;
+  mesh.rotation.z=ud.lean;
 }
 
 function spawnEntities(fl){
@@ -1414,8 +1455,9 @@ function updateEntities(dt){
       mesh.position.set(e.x,1.1,e.z);
       if(window.ADMIN)mesh.scale.setScalar(ADMIN.mobScale());
       mesh.visible=!e.hidden||(d<4);
-      // Billboard — always face player
-      mesh.rotation.y=Math.atan2(P.x-e.x,P.z-e.z);
+      // Плавный доворот к игроку с наклоном корпуса (KEN-12) вместо
+      // мгновенного разворота-биллборда
+      smoothFace(mesh,P.x,P.z,dt,7);
       // Eyes pulse
       var pulse=e.chase?3:1.5+Math.sin(Date.now()*0.004);
       if(mesh.userData.eyes)mesh.userData.eyes.forEach(function(c){c.material.emissiveIntensity=pulse;});
@@ -1722,7 +1764,7 @@ function updateF4(dt){
   // --- меш ---
   if(F4.mesh){
     F4.mesh.position.set(b.x,0,b.z);
-    F4.mesh.rotation.y=Math.atan2(F4.tx-b.x,F4.tz-b.z);
+    smoothFace(F4.mesh,F4.tx,F4.tz,dt,5);   // чердачный босс тоже с инерцией поворота
     var pulseE=F4.state==='HUNT'?6:(F4.state==='INVESTIGATE'?3.5:1.6+Math.sin(Date.now()*0.003));
     F4.mesh.children.forEach(function(c){
       if(c.material&&c.material.emissiveIntensity!==undefined)c.material.emissiveIntensity=pulseE;
