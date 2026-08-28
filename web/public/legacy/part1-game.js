@@ -1177,7 +1177,94 @@ function sndBad(){var a=getAC();if(!a)return;var o=a.createOscillator(),g=a.crea
 // ============================================================
 var speechOK=false;
 function unlockSpeech(){if(speechOK||!window.speechSynthesis)return;speechOK=true;var u=new SpeechSynthesisUtterance('');u.volume=0;speechSynthesis.speak(u);}
-function say(txt,rate,pitch){if(!window.speechSynthesis)return;speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(txt);u.lang='ru-RU';u.rate=rate||0.82;u.pitch=pitch||0.52;u.volume=1;var voices=speechSynthesis.getVoices();var male=voices.find(function(v){return v.lang.indexOf('ru')>=0&&(v.name.indexOf('Male')>=0||v.name.indexOf('Maxim')>=0||v.name.indexOf('Pavel')>=0||v.name.indexOf('Dmitri')>=0);});if(!male)male=voices.find(function(v){return v.lang.indexOf('ru')>=0;});if(male)u.voice=male;speechSynthesis.speak(u);}
+// Заранее сгенерированные реплики (Fish Audio S2.1 Pro) — тот же механизм,
+// что уже работает в part2.html (KEN-14): точный текст → mp3-файл.
+// Осознанное исключение из «ноль внешних файлов», как и скины Этапа 21.
+// Динамические фразы (цветные ключи/замки) перечислены всеми вариантами.
+var VOICE_LINES={
+  '...Я здесь работал охранником.':'g_intro1',
+  'Магазин закрыли три года назад. Люди пропадали.':'g_intro2',
+  'Говорили, пахло мясом.':'g_intro3',
+  'Мне нужно узнать, что здесь произошло.':'g_intro4',
+  'Без отмычки никак.':'g_01',
+  'Второй этаж. Темнее. И этот запах.':'g_02',
+  'Капкан. Больно.':'g_03',
+  'Нет...':'g_04',
+  'Нет... Это был не выход.':'g_05',
+  'Нет... ключ сломался.':'g_06',
+  'Нужна отмычка.':'g_07',
+  'Он слепой. Но слышит.':'g_08',
+  'Он уже здесь. Он меня не видит.':'g_09',
+  'Открыто. Я выхожу.':'g_10',
+  'Отмычка. Теперь к двери.':'g_11',
+  'Работает! Тут ключ.':'g_12',
+  'Третий этаж.':'g_13',
+  'Устал... полежу немного.':'g_14',
+  'Я вышел. Всё позади... наверное.':'g_15',
+  'Закрыто.':'g_door1',
+  'Заперто...':'g_door2',
+  'Да блин, все двери заперты!':'g_door3',
+  'Да блин, ещё провода.':'g_wire1',
+  'Окей, третьи провода.':'g_wire2',
+  'Живой. Идём, тут нельзя оставаться.':'g_resc1',
+  'красный ключ у меня.':'g_keyr',
+  'зелёный ключ у меня.':'g_keyg',
+  'синий ключ у меня.':'g_keyb',
+  'красный замок открыт.':'g_lockr',
+  'зелёный замок открыт.':'g_lockg',
+  'синий замок открыт.':'g_lockb',
+  'Нужен красный ключ.':'g_needr',
+  'Нужен зелёный ключ.':'g_needg',
+  'Нужен синий ключ.':'g_needb',
+  'Мерзость... охранник вернулся.':'m_ep2_1',
+  'Тебе здесь не место.':'m_ep2_2',
+  'Я чую тебя.':'m_ep2_3',
+  'Ты не уйдёшь.':'m_ep2_4',
+  'Выходи отсюда.':'m_ep3_1',
+  'Выходи.':'m_ep3_2',
+  'Выходи отсюда... выходи.':'m_ep3_3',
+  'Выходи, выходи, выходи...':'m_ep3_4',
+  'Ты нашёл меня. Теперь беги.':'m_chase',
+  'Куда ты делся...':'m_lost',
+  'Я ожидал от тебя большего.':'m_boss',
+  'Я слышу тебя.':'f4_1',
+  'Тише... тише.':'f4_2',
+  'Где ты дышишь?':'f4_3',
+  'Не двигайся.':'f4_4',
+  'Я найду тебя по звуку.':'f4_5',
+  'Пожалуйста, забери мою сумку.':'s_bag',
+  'Спасибо... это всё, что у меня осталось.':'s_thanks'
+};
+var VOICE_CACHE={};
+// Прогрев <audio> на первое касание — та же мобильная блокировка
+// автоплея, что и у speechSynthesis, см. unlockVoiceAudio() в part2.html.
+var voiceAudioOK=false;
+function unlockVoiceAudio(){
+  if(voiceAudioOK)return;
+  voiceAudioOK=true;
+  try{
+    var a=new Audio('audio/voice/part1/g_door1.mp3');
+    a.volume=0;
+    var p=a.play();
+    if(p&&p.catch)p.catch(function(){});
+    setTimeout(function(){try{a.pause();a.currentTime=0;}catch(e){}},100);
+  }catch(e){}
+}
+function say(txt,rate,pitch){
+  var id=VOICE_LINES[txt];
+  if(id){
+    try{
+      var a=VOICE_CACHE[id];
+      if(!a){a=new Audio('audio/voice/part1/'+id+'.mp3');VOICE_CACHE[id]=a;}
+      else{a.pause();a.currentTime=0;}
+      var p=a.play();
+      if(p&&p.catch)p.catch(function(){sayFallback(txt,rate,pitch);});
+      return;
+    }catch(e){}
+  }
+  sayFallback(txt,rate,pitch);
+}
+function sayFallback(txt,rate,pitch){if(!window.speechSynthesis)return;speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(txt);u.lang='ru-RU';u.rate=rate||0.82;u.pitch=pitch||0.52;u.volume=1;var voices=speechSynthesis.getVoices();var male=voices.find(function(v){return v.lang.indexOf('ru')>=0&&(v.name.indexOf('Male')>=0||v.name.indexOf('Maxim')>=0||v.name.indexOf('Pavel')>=0||v.name.indexOf('Dmitri')>=0);});if(!male)male=voices.find(function(v){return v.lang.indexOf('ru')>=0;});if(male)u.voice=male;speechSynthesis.speak(u);}
 function sayE(txt){say(txt,0.52,0.22);}
 
 // ============================================================
@@ -1258,7 +1345,7 @@ var jz=document.getElementById('jzone'),jk=document.getElementById('jknob');
 var jOn=false,jId=null,jcx=0,jcy=0,jmx=0,jmy=0;
 function jFind(list,id){for(var i=0;i<list.length;i++){if(list[i].identifier===id)return list[i];}return null;}
 function jStart(e){
-  unlockSpeech();getAC();
+  unlockSpeech();unlockVoiceAudio();getAC();
   if(jOn)return;                                  // уже держим — второй палец не перехватывает
   var t;
   if(e.changedTouches){t=e.changedTouches[0];jId=t.identifier;}   // ИМЕННО тот палец, что лёг на джойстик
@@ -1293,7 +1380,7 @@ function isBtn(x,y,el){
   if(el&&el.closest&&el.closest('#fl-inspect-btn,#inv-btn,#mg-gear,#adm-panel,#inv-panel,#mg-set'))return true;
   return false;
 }
-document.addEventListener('touchstart',function(e){unlockSpeech();getAC();if(lOn)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(isJoy(t.clientX,t.clientY)||isBtn(t.clientX,t.clientY,t.target))continue;lOn=true;lId=t.identifier;llx=t.clientX;lly=t.clientY;break;}},{passive:true});
+document.addEventListener('touchstart',function(e){unlockSpeech();unlockVoiceAudio();getAC();if(lOn)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(isJoy(t.clientX,t.clientY)||isBtn(t.clientX,t.clientY,t.target))continue;lOn=true;lId=t.identifier;llx=t.clientX;lly=t.clientY;break;}},{passive:true});
 document.addEventListener('touchmove',function(e){if(!lOn||dead||HG.active)return;for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(t.identifier!==lId)continue;
   // Та же чувствительность/инверсия, что и у мыши (из настроек), только
   // с поправкой — палец на экране физически двигается меньше, чем мышь.
@@ -1304,13 +1391,13 @@ document.addEventListener('touchend',function(e){for(var i=0;i<e.changedTouches.
 
 var mRun=false,mCrouch=false,mJump=false;
 var STAM={v:1,tired:false};   // выносливость: 10 секунд непрерывного бега
-function mkbtn(id,dn,up){var el=document.getElementById(id);if(!el)return;function onD(){unlockSpeech();getAC();el.classList.add('pressed');dn();}function onU(){el.classList.remove('pressed');if(up)up();}el.addEventListener('touchstart',function(e){e.stopPropagation();e.preventDefault();onD();},{passive:false});el.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();onU();},{passive:false});el.addEventListener('mousedown',function(e){e.stopPropagation();onD();});el.addEventListener('mouseup',onU);}
+function mkbtn(id,dn,up){var el=document.getElementById(id);if(!el)return;function onD(){unlockSpeech();unlockVoiceAudio();getAC();el.classList.add('pressed');dn();}function onU(){el.classList.remove('pressed');if(up)up();}el.addEventListener('touchstart',function(e){e.stopPropagation();e.preventDefault();onD();},{passive:false});el.addEventListener('touchend',function(e){e.stopPropagation();e.preventDefault();onU();},{passive:false});el.addEventListener('mousedown',function(e){e.stopPropagation();onD();});el.addEventListener('mouseup',onU);}
 // Бег и присед — ПЕРЕКЛЮЧАТЕЛИ: нажал один раз и держится
 function mktoggle(id,fn){
   var el=document.getElementById(id);if(!el)return;
   function onD(e){
     if(e){e.stopPropagation();if(e.cancelable)e.preventDefault();}
-    unlockSpeech();getAC();
+    unlockSpeech();unlockVoiceAudio();getAC();
     var on=fn();
     if(on)el.classList.add('pressed'); else el.classList.remove('pressed');
   }
@@ -3428,7 +3515,7 @@ function loop(ts){
 
 function startGame(){
   document.getElementById('start').style.display='none';
-  unlockSpeech();getAC();started=true;
+  unlockSpeech();unlockVoiceAudio();getAC();started=true;
   startAmbient();
   showMsg('Настройка звука...',1400);
   // Синтезируем заранее, но НЕ запускаем: на первых этажах тишина,
@@ -3440,7 +3527,7 @@ function startGame(){
 // (они уже прозвучали в прошлый раз) и сразу на чек-пойнте.
 function continueGame(){
   document.getElementById('start').style.display='none';
-  unlockSpeech();getAC();started=true;
+  unlockSpeech();unlockVoiceAudio();getAC();started=true;
   startAmbient();
   showMsg('Настройка звука...',1400);
   setTimeout(function(){BossMusic.prepare();},60);
@@ -3466,7 +3553,7 @@ function jumpToFloor(n){
   if(n>maxFloor)return;                     // эта глава ещё не открыта
   if(!started){
     document.getElementById('start').style.display='none';
-    unlockSpeech();getAC();started=true;startAmbient();
+    unlockSpeech();unlockVoiceAudio();getAC();started=true;startAmbient();
     setTimeout(function(){BossMusic.prepare();},60);
     setTimeout(function(){enterFloorAt(n,{messages:false});},400);
   }else{
@@ -3482,7 +3569,7 @@ function jumpToFloor(n){
 var DEBUG_UNLOCK=/[?&]unlockall=1\b/.test(location.search);
 function debugEnterFloor(n){
   document.getElementById('start').style.display='none';
-  unlockSpeech();getAC();started=true;startAmbient();
+  unlockSpeech();unlockVoiceAudio();getAC();started=true;startAmbient();
   setTimeout(function(){BossMusic.prepare();},60);
   setTimeout(function(){enterFloorAt(n,{messages:false});},400);
 }
